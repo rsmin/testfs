@@ -16,7 +16,6 @@ using namespace std;
 #include <stdint.h>
 #endif
 #include "Block.hh"
-#include <iostream>
 //
 /**
  * writeCache object that supports insertions an its head and tail ends. A major
