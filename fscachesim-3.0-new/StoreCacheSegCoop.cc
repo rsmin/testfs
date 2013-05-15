@@ -1,0 +1,305 @@
+/*
+  RCS:          $Header: /afs/cs.cmu.edu/user/tmwong/Cvs/fscachesim/StoreCacheSeg.cc,v 1.4 2002/02/18 00:23:45 tmwong Exp $
+  Author:       T.M. Wong <tmwong+@cs.cmu.edu>
+*/
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H */
+
+#include <math.h>
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif /* HAVE_STDINT_H */
+#include <stdio.h>
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif /* HAVE_STDLIB_H */
+
+
+#include "IORequest.hh"
+
+#include "StoreCacheSegCoop.hh"
+#include "util.hh"
+
+using Block::block_t;
+using FreqBlock::history_t;
+
+int
+StoreCacheSegCoop::blockGetCascade(const block_t& inBlock)
+{
+  int retval = cacheSegCount;
+
+  for (int i = 0; i < cacheSegCount; i++) {
+    if (cacheSegs[i]->isCached(inBlock)) {
+      	cacheSegs[i]->blockGet(inBlock);
+      segHits[i]++;
+      retval = i;
+      break;
+    }
+  }
+
+  return (retval);
+}
+
+void
+StoreCacheSegCoop::blockPutAtSegCascade(const block_t& inBlock,
+				    int inSeg)
+{
+  block_t cascadeEjectBlock = inBlock;
+  bool cascadeEjectFlag = true;
+
+  for (int i = inSeg; i >= 0 && cascadeEjectFlag; i--) {
+    block_t ejectBlock = {0, 0};
+
+    cascadeEjectFlag = false;
+    if (cacheSegs[i]->isFull()) {
+      cacheSegs[i]->blockGetAtHead(ejectBlock);
+      cascadeEjectFlag = true;
+    }
+
+    // Cache the incoming block at the tail of the queue.
+
+    cacheSegs[i]->blockPutAtTail(cascadeEjectBlock);
+    cascadeEjectBlock = ejectBlock;
+  }
+}
+
+StoreCacheSegCoop::StoreCacheSegCoop(const char *inName,
+			     uint64_t inBlockSize,
+			     uint64_t inSize,
+			     int inSegCount) :
+  StoreCacheSimpleCoop(inName, inBlockSize,inSize),
+  cacheSegCount(inSegCount)
+{
+  uint64_t cacheSegSize = inSize / cacheSegCount;
+  uint64_t cacheSizeRemain = inSize;
+
+  cacheSegs = new Cache *[cacheSegCount];
+  segHits = new uint64_t[cacheSegCount];
+  for (int i = 0; i < cacheSegCount; i++) {
+    uint64_t thisSegSize = (i < cacheSegCount - 1 ?
+			    cacheSegSize :
+			    cacheSizeRemain);
+
+    cacheSegs[i] = new Cache(thisSegSize);
+    segHits[i] = 0;
+
+    cacheSizeRemain -= thisSegSize;
+  }
+  if (cacheSizeRemain != 0) {
+    abort();
+  }
+}
+
+// For the exponential size segments, each segment is inSegMultiplier times
+// the size of the previous segment.
+
+StoreCacheSegCoop::StoreCacheSegCoop(const char *inName,
+			     uint64_t inBlockSize,
+			     uint64_t inSize,
+			     int inSegCount,
+			     int inSegMultiplier) :
+  StoreCacheSimpleCoop(inName, inBlockSize,inSize),
+  cacheSegCount(inSegCount)
+{
+  cacheSegs = new Cache *[cacheSegCount];
+  segHits = new uint64_t[cacheSegCount];
+
+  // Track how much cache space remains after allocating space for each
+  // segment. We will sweep remaining space into the tail segment.
+
+  uint64_t cacheSizeRemain = inSize;
+
+  // Each cache segment size is a fraction of the cache size. Determine the
+  // denominator of the fractions. For example, if each segment is twice
+  // the size of the previous segment, and there are four segments, the
+  // denominator is:
+  //
+  // 8 4 2 1 = 15
+  //
+  // Thus, we divide the cache size into fifteen shares, and distribute
+  // shares accordingly.
+
+  int cacheShareCount = 0;
+  for (int i = 0; i < cacheSegCount; i++) {
+    cacheShareCount += ((int)pow(inSegMultiplier, i));
+  }
+  uint64_t cacheShareSize = inSize / cacheShareCount;
+
+  for (int i = cacheSegCount - 1; i >= 0; i--) {
+    // Assign shares to this segment. The last (tail) segment gets the most
+    // shares, and also any slop hasn't already been allocated due to
+    // round-off.
+
+/*    uint64_t thisSegSize = (i < cacheSegCount - 1 ?
+			    ((int)(pow(inSegMultiplier, i))) * cacheShareSize :
+			    cacheSizeRemain);*/
+
+    uint64_t thisSegSize = (i > 0 ?
+			    ((int)(pow(inSegMultiplier, cacheSegCount - 1 - i))) * cacheShareSize :
+			    cacheSizeRemain);
+
+    cacheSegs[i] = new Cache(thisSegSize);
+    segHits[i] = 0;
+    cacheSizeRemain -= thisSegSize;
+  }
+
+  // Make sure we assigned all of the cache.
+
+  if (cacheSizeRemain != 0) {
+    abort();
+  }
+}
+
+StoreCacheSegCoop::~StoreCacheSegCoop()
+{
+  for (int i = 0; i < cacheSegCount; i++) {
+    delete cacheSegs[i];
+  }
+  delete segHits;
+  delete cacheSegs;
+}
+
+bool
+StoreCacheSegCoop::ReadFromCache(const IORequest& inIOReq,
+			  const Block::block_t& inBlock)
+{
+  bool ret = false;
+
+  const char* reqOrig = inIOReq.origGet();
+
+  // See if we have cached this block. We only update the ghost hit counts
+  // when we receive a read request.
+
+  int blockSeg = blockGetCascade(inBlock);
+  if (blockSeg != cacheSegCount) {
+      readHitsPerOrig[reqOrig]++;
+      readHits++;
+      blockRead(inBlock);
+
+      ret = true;
+  }
+  else {
+
+      readMissesPerOrig[reqOrig]++;
+      readMisses++;
+
+    }
+
+  return ret;
+}
+
+
+void
+StoreCacheSegCoop::DemoteToCache(const IORequest& inIOReq,
+			  const Block::block_t& inBlock)
+{
+  const char* reqOrig = inIOReq.origGet();
+
+  if (cooperative.isCached(inBlock))
+      return;
+
+  blockDemote(inBlock);
+
+  int insertSeg = posGet(inBlock);   
+  if (insertSeg == cacheSegCount) {
+         insertSeg--;
+  }
+  blockPutAtSegCascade(inBlock, insertSeg); 
+
+}
+
+void StoreCacheSegCoop::blockRead(const Block::block_t& inBlock)
+{
+  HistoryIndex::iterator histIter = historyIndex.find(inBlock);
+  if (histIter != historyIndex.end()) {
+    if (histIter->second->demotetime == 0)
+       histIter->second->freq++;
+    histIter->second->demotetime = 1;
+  }
+}
+
+void StoreCacheSegCoop::blockDemote(const Block::block_t& inBlock)
+{
+  HistoryIndex::iterator histIter = historyIndex.find(inBlock);
+  if (histIter != historyIndex.end()) {
+//    histIter->second->freq++;
+      histIter->second->demotetime = 0;
+  }
+  else
+  {
+    // insert history cache
+ 
+    FreqBlock::history_t hist;
+//    hist.freq = 1;
+    hist.freq = 0;
+    hist.dist = 0;
+    hist.demotetime = 0;
+    history.push_front(hist);
+    historyIndex[inBlock] = history.begin();
+  }
+
+}
+
+int StoreCacheSegCoop::posGet(const Block::block_t& inBlock)
+{
+  uint64_t pos;
+  HistoryIndex::iterator histIter = historyIndex.find(inBlock);
+  if (histIter != historyIndex.end()) {
+     if (histIter->second->freq > 0) 
+       pos = log2(histIter->second->freq) + 1;
+     else 
+       pos = 0;
+
+     if (pos  > cacheSegCount - 1)
+        pos  = cacheSegCount - 1;
+     return pos;
+  }
+  else
+  {
+     abort();
+  }
+}
+
+void
+StoreCacheSegCoop::statisticsReset()
+{
+  for (int i = 0; i < cacheSegCount; i++) {
+    segHits[i] = 0;
+  }
+
+  StoreCache::statisticsReset();
+}
+
+void
+StoreCacheSegCoop::statisticsShow() const
+{
+  printf("{StoreCacheSeg.%s\n", nameGet());
+if (mode != Analyze)
+{
+  printf("\t{size ");
+  uint64_t sizeTotal = 0;
+  for (int i = 0; i < cacheSegCount; i++) {
+    printf("{seg%d=%llu} ", i, cacheSegs[i]->sizeGet() * blockSizeGet());
+    sizeTotal += cacheSegs[i]->sizeGet();
+  }
+  printf("{total=%llu} }\n", sizeTotal * blockSizeGet());
+
+  printf("\t{segHits ");
+  uint64_t segHitsTotal = 0;
+  for (int i = 0; i < cacheSegCount; i++) {
+    printf("{seg%d=%llu} ", i, segHits[i]);
+    segHitsTotal += segHits[i];
+  }
+  printf("{total=%llu} }\n", segHitsTotal);
+
+
+}
+
+  StoreCache::statisticsShow();
+if (mode != Analyze)
+{
+  printf("}\n");
+}
+}

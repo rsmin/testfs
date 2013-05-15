@@ -1,0 +1,42 @@
+/*
+  RCS:          $Header: /afs/cs.cmu.edu/user/tmwong/Cvs/fscachesim/fscachesim.cc,v 1.9 2002/03/14 22:29:12 tmwong Exp $
+  Author:       T.M. Wong <tmwong+@cs.cmu.edu>
+*/
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H */
+
+#include <fcntl.h>
+#include <functional>  
+#ifdef HAVE_STDINT_H 
+#include <stdint.h>
+#endif /* HAVE_STDINT_H */
+#include <stdio.h> 
+
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif /* HAVE_STDLIB_H */
+#include <string.h> 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif /* HAVE_UNISTD_H */
+
+#include "IORequest.hh"
+#include "IORequestGeneratorBatch.hh"
+#include "IORequestGeneratorFile.hh"
+#include "IORequestGeneratorFileGeneric.hh"
+#include "IORequestGeneratorFileMambo.hh"
+#include "Store.hh"
+#include "StoreCache.hh"
+#include "StoreCacheSeg.hh"
+#include "StoreCacheSimple.hh"
+#include "StoreCache2Q.hh"
+#include "StoreCacheLRU2Address.hh"
+#include "PindownCache.hh"
+
+void main()
+{
+  PindownCache cache;
+  
+}

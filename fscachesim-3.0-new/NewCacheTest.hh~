@@ -1,0 +1,42 @@
+#ifndef _NEWCACHE_HH_
+#define _NEWCACHE_HH_
+
+using namespace std;
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H */
+
+#define NDEBUG
+
+#include <assert.h>
+#include <list>
+#include <map>
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif /* HAVE_STDINT_H */
+
+#include "BlockTest.hh"
+
+/**
+ * Cache object that supports insertions an its head and tail ends. A major
+ * failing of this class is that it does not perform comprehensive bounds
+ * checking during block insertions.
+ */
+class NewCache {
+
+
+public:
+
+  list<Block::block_t> *cache;
+
+  NewCache(list<Block::block_t> *inList) { cache = inList; };
+
+  /**
+   * Destroy a Cache object.
+   */
+  ~NewCache() { ; };
+
+};
+
+#endif /* _CACHE_HH_ */

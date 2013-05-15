@@ -1,0 +1,215 @@
+/*
+  RCS:          $Header: /afs/cs.cmu.edu/user/tmwong/Cvs/fscachesim/Cache.hh,v 1.11 2002/02/15 15:44:25 tmwong Exp $
+  Author:       T.M. Wong <tmwong+@cs.cmu.edu>
+*/
+
+#ifndef _CACHE_HH_
+#define _CACHE_HH_
+
+using namespace std;
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H */
+
+#define NDEBUG
+
+#include <assert.h>
+#include <list>
+#include <map>
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif /* HAVE_STDINT_H */
+
+#include "Block.hh"
+
+/**
+ * Cache object that supports insertions an its head and tail ends. A major
+ * failing of this class is that it does not perform comprehensive bounds
+ * checking during block insertions.
+ */
+class Cache {
+private:
+  typedef map<Block::block_t,
+	      list<Block::block_t>::iterator,
+	      Block::LessThan> CacheIndex;
+
+  /**
+   * The cache.
+   */
+  list<Block::block_t> cache;
+
+  /**
+   * An index into the cache, keyed by blocks.
+   */
+  CacheIndex cacheIndex;
+
+  /**
+   * The block count.
+   */
+  uint64_t blockCount;
+
+  /**
+   * The maximum block count.
+   */
+  uint64_t blockCountMax;
+
+private:
+  // Copy constructors - declared private and never defined
+
+  Cache(const Cache&);
+  Cache& operator=(const Cache&);
+
+public:
+  /**
+   * Create a Cache object.
+   *
+   * @param inCacheSize The maximum number of blocks the cache can hold.
+   */
+  Cache(uint64_t inCacheSize) :
+    cache(),
+    cacheIndex(),
+    blockCount(0),
+    blockCountMax(inCacheSize) { ; };
+
+  /**
+   * Destroy a Cache object.
+   */
+  ~Cache() { ; };
+
+  /**
+   * Get a block from the cache. Decrement the block count if the block is
+   * found. Otherwise, do nothing.
+   *
+   * @param inBlock The block to get.
+   */
+  void blockGet(const Block::block_t& inBlock);
+
+  /**
+   * Get the block at the head of the cache. Copy the block into outBlock
+   * and decrement the block count if the cache is not empty. Otherwise, do
+   * nothing.
+   *
+   * @param outBlock An output block.
+   */
+  void blockGetAtHead(Block::block_t& outBlock);
+
+  /**
+   * Put a block at the head of the cache.
+   *
+   * @warning Does not check if the cache is already full.
+   *
+   * @param outBlock The block to put.
+   */
+  void blockPutAtHead(const Block::block_t& inBlock);
+
+  /**
+   * Put a block at the tail of the cache.
+   *
+   * @warning Does not check if the cache is already full.
+   *
+   * @param outBlock The block to put.
+   */
+  void blockPutAtTail(const Block::block_t& inBlock);
+
+  /**
+   * Get the count of blocks in the cache.
+   */
+  uint64_t sizeGet() const { return (blockCountMax);};
+  void sizeSet(uint64_t size); 
+  uint64_t numGet() const { return (blockCount);};
+
+
+  /**
+   * Find out if inBlock is cached. If it is, return true. Otherwise,
+   * return false.
+   *
+   * @param inBlock The block to find.
+   */
+  bool isCached(const Block::block_t& inBlock) const;
+
+  /**
+   * Find out if the cache is full. If it is, return true. Otherwise,
+   * return false.
+   */
+  bool isFull() const;
+  bool isEmpty() const;
+};
+
+
+
+
+inline void
+Cache::blockGet(const Block::block_t& inBlock)
+{
+  CacheIndex::iterator blockIter = cacheIndex.find(inBlock);
+  if (blockIter != cacheIndex.end()) {
+    cacheIndex.erase(blockIter);
+    cache.erase(blockIter->second);
+    blockCount--;
+  }
+  assert(blockCount >= 0);
+};
+
+inline void
+Cache::blockGetAtHead(Block::block_t& outBlock)
+{
+  if (!cache.empty()) {
+    outBlock = *cache.begin();
+    cacheIndex.erase(cache.front());
+    cache.pop_front();
+    blockCount--;
+  }
+  assert(blockCount >= 0);
+};
+
+
+
+inline void
+Cache::blockPutAtHead(const Block::block_t& inBlock)
+{
+  blockCount++;
+  cache.push_front(inBlock);
+  cacheIndex[inBlock] = cache.begin();
+  assert(blockCount <= blockCountMax);
+};
+
+inline void
+Cache::blockPutAtTail(const Block::block_t& inBlock)
+{
+  blockCount++;
+  cache.push_back(inBlock);
+  cacheIndex[inBlock] = --cache.end();
+  assert(blockCount <= blockCountMax);
+};
+
+inline bool
+Cache::isCached(const Block::block_t& inBlock) const
+{
+  return (cacheIndex.find(inBlock) != cacheIndex.end());
+};
+
+inline bool
+Cache::isFull() const
+{
+  return (blockCount == blockCountMax);
+};
+
+inline void
+Cache::sizeSet(uint64_t size)
+{
+   blockCountMax = size; 
+  if (blockCountMax < blockCount)
+  {
+     printf(" cache set size error\n");
+     abort();
+  }
+}
+
+inline bool
+Cache::isEmpty() const
+{
+  return (cache.empty());
+};
+
+#endif /* _CACHE_HH_ */

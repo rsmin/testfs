@@ -1,0 +1,47 @@
+{StoreCacheSimple.array
+
+	Read: 
+	Distance	Number of Accesses
+	1	56
+	32	1
+	256	29
+	1K	14
+	128K	327403
+	256K	56768
+
+	Read:
+	Frequency	Number of Blocks	Number of Accesses	Total Number of Blocks	Total Number of Accesses	Percentage of Blocks	Percentage of Accesses
+	1	65998	65998	216367	600638	1.000000	1.000000
+	2	56769	160158	150369	534640	0.694972	0.890120
+	4	93597	374440	93600	374482	0.432598	0.623474
+	8	3	42	3	42	0.000014	0.000070
+
+	Read: 
+	Frequency	Distance	Number of Accesses	Total Number of Accesses
+	2	32	1	1
+	2	256	29	29
+	2	1K	14	14
+	2	128K	46621	327403
+	2	256K	56768	56768
+	4	1	17	56
+	4	128K	280782	280782
+	8	1	39	39
+
+
+	 Total Demote Distance
+	Distance	Number of Accesses
+
+	 Access Specific Demote Distance
+	block number	demote number	hit number	miss number	hit perc
+	216367	0	0	0	nan
+
+	Frequency	# of Blocks	# of ALL Hit Blocks	# of One Miss Blocks	# of Demotes	# of Hits	# of Misses	Perc of local Hits	Perc of Blocks	Perc of Demotes	Perc of Hits	Perc of Misses	D-R Distance Mean	D-R Variance	R-D Mean	R-D Variance
+
+	Freq	Distance	D-R	R-D
+
+	Reqlens:
+	Lens	Number of Req	Perc
+	1	600603	0.999942
+	2	35	0.000058
+
+{StoreCacheSimple.db2.0.txt

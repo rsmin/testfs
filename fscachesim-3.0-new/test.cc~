@@ -1,0 +1,112 @@
+
+#include "config.h">
+#include <fcntl.h>
+#include <functional>
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif /* HAVE_STDINT_H */
+#include <stdio.h>
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif /* HAVE_STDLIB_H */
+#include <string.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif /* HAVE_UNISTD_H */
+
+using namespace std;
+
+#include <assert.h> 
+#include <list>
+#include <map>
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif /* HAVE_STDINT_H */  
+ 
+#include <stdint.h>
+#include "DemoteStat.hh"
+#include "LFUCache.hh"
+
+  static char access[MAXACC][10] = {"1","2","4", "8","16","32","64","128","256","512","1K", \
+                                 "2K","4K","8K","16K","32K"};
+  static char dis_char[MAXDIS][10] = {"1","16", "32","64","128","256","512","1K", \
+                                 "2K","4K","8K","16K","32K", \
+                               "64K","128K","256K","512K","1M","2M","4M","8M","16M","32M", \
+                               "64M","128M","256M","512M","1G",   \
+                               "2G","4G" ,"8G"};
+
+int main()
+{
+  DemoteStat ds;
+  uint64_t time = 1;
+  block_t bk;
+
+  LFUCache cache;
+
+  bk.objID = 1;
+  bk.blockID = 2;
+
+  ds.blockDemote(bk,time);
+  time = time + 4;
+  ds.blockRead(bk,time);
+
+  time = time + 2; // 
+
+  ds.blockDemote(bk,time);
+  time = time + 2;
+  ds.blockRead(bk,time);
+
+  bk.objID = 2;
+  bk.blockID = 3;
+
+  ds.blockDemote(bk,time);
+  time = time + 8;
+  ds.blockRead(bk,time);
+
+  time = time + 4; //
+
+  ds.blockDemote(bk,time);
+  time = time + 2;
+  ds.blockRead(bk,time);
+
+
+  ds.Calc();
+
+      if (ds.blockNum <= 0)
+          return 0;
+     
+
+       printf("\tblock number\tdemote number\thit number\tmiss number\thit perc\n");
+       printf("\t%llu\t%llu\t%llu\t%llu\t%lf\n\n", 
+         ds.blockNum, ds.demoteNum, ds.hitNum, ds.missNum, ds.hitPerc);
+
+       printf("\tFrequency\t# of Blocks\t# of ALL Hit Blocks\t# of One Miss Blocks\t# of Demotes\t# of Hits\t# of Misses\tPerc of local Hits\tPerc of Blocks\tPerc of Demotes\tPerc of Hits\tPerc of Misses\tD-R Distance Mean\tD-R Variance\tR-D Mean\tR-D Variance\n");
+ 
+       for (int i = 0; i < MAXACC; i++)
+          if (ds.freq_stat[i][0] > 0)
+          {
+            printf("\t%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%lf\t%lf\t%lf\t%lf\t%lf\t%s\t%s\t%s\t%s\n",
+               access[i], ds.freq_stat[i][0], ds.freq_stat[i][1], ds.freq_stat[i][2],
+               ds.freq_stat[i][3], ds.freq_stat[i][4], ds.freq_stat[i][5], ds.freq_perc[i][4],
+               ds.freq_perc[i][0], ds.freq_perc[i][1], ds.freq_perc[i][2], ds.freq_perc[i][3],
+               dis_char[ds.freq_dist_mv[i][0]], dis_char[ds.freq_dist_mv[i][1]],
+               dis_char[ds.freq_dist_mv[i][2]], dis_char[ds.freq_dist_mv[i][3]]);
+          }
+       printf("\n");
+
+       printf("\tFreq\tDistance\tD-R\tR-D\n");
+       for (int i = 0; i < MAXACC; i++)
+       {
+          if (ds.freq_stat[i][0] > 0)
+          {
+            for (int j = 0; j < MAXDIS; j++)
+              if ((ds.freq_dist_spec[i][j][0] > 0)||(ds.freq_dist_spec[i][j][1] > 0))
+               printf("\t%s\t%s\t%llu\t%llu\n",
+                 access[i], dis_char[j], ds.freq_dist_spec[i][j][0],ds.freq_dist_spec[i][j][1]);
+          }
+       }
+       printf("\n");
+
+return 0;
+}
+

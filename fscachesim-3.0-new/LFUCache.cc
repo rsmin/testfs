@@ -1,0 +1,409 @@
+using namespace std;
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif 
+
+#define NDEBUG
+
+#include <assert.h>
+#include <list>
+#include <map>
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif 
+
+#include "Block.hh"
+#include "FreqBlock.hh"
+#include "LFUCache.hh"
+#include "util.hh"
+
+  extern char dis_char[MAXDIS][10];
+  extern char access2[MAXACC][10];
+
+LFUCache::LFUCache(uint64_t inLFUCacheSize) :
+    cache(),
+    cacheIndex(),
+    lfuIndex(),
+    history(),
+    historyIndex(),
+    blockCount(0),
+    blockCountMax(inLFUCacheSize)
+    { ; };
+
+bool 
+LFUCache::blockRemove(list<FreqBlock::freq_block_t>::iterator blockIter)
+{
+  bool ret = false;
+
+  if (blockIter != cache.end()) {
+
+    // lfu index removal
+    FreqBlock::freq_time_t ft;
+    ft.time = blockIter->time;
+    ft.checktime = blockIter->lastchecktime;
+    ft.freq = blockIter->freq;
+    ft.dist = blockIter->dist;
+    LFUIndex::iterator lfuIter = lfuIndex.find(ft);
+    assert(lfuIter != lfuIndex.end());
+    if (lfuIter != lfuIndex.end())
+      lfuIndex.erase(lfuIter);
+
+    // time index removal
+    FreqBlock::check_time_t ct;
+    ct.time = blockIter->time;
+    ct.checktime = blockIter->lastchecktime;
+    TimeIndex::iterator timeIter = timeIndex.find(ct);
+    assert(timeIter != timeIndex.end());
+    if (timeIter != timeIndex.end())
+      timeIndex.erase(timeIter);
+
+    // cache index removal
+     Block::block_t b;
+     b.objID = blockIter->objID;
+     b.blockID = blockIter->blockID;
+
+    CacheIndex::iterator Iter = cacheIndex.find(b);
+      assert(Iter != cacheIndex.end());
+    if (Iter != cacheIndex.end())
+        cacheIndex.erase(Iter);
+
+    // cache removal
+    cache.erase(blockIter);
+
+    blockCount--;
+    ret = true;
+  }
+  assert(blockCount >= 0);
+  return ret;
+};
+
+bool
+LFUCache::blockRemove(const Block::block_t& inBlock)
+{
+  bool ret = false;
+
+  CacheIndex::iterator blockIter = cacheIndex.find(inBlock);
+  if (blockIter != cacheIndex.end()) {
+
+    // lfu index removal
+    FreqBlock::freq_time_t ft;
+    ft.time = blockIter->second->time;
+    ft.checktime = blockIter->second->lastchecktime;
+    ft.freq = blockIter->second->freq;
+    ft.dist = blockIter->second->dist;
+    LFUIndex::iterator lfuIter = lfuIndex.find(ft);
+    assert(lfuIter != lfuIndex.end());
+    if (lfuIter != lfuIndex.end())
+      lfuIndex.erase(lfuIter);
+
+    // time index removal
+    FreqBlock::check_time_t ct;
+    ct.time = blockIter->second->time;
+    ct.checktime = blockIter->second->lastchecktime;
+    TimeIndex::iterator timeIter = timeIndex.find(ct);
+    assert(timeIter != timeIndex.end());
+    if (timeIter != timeIndex.end())
+      timeIndex.erase(timeIter);
+
+    // cache removal
+    cache.erase(blockIter->second);
+
+    // cache index removal
+    cacheIndex.erase(blockIter);
+
+    blockCount--;
+    ret = true;
+  }
+  assert(blockCount >= 0);
+  return ret;
+};
+
+ bool
+LFUCache::blockRemove(LFUIndex::iterator lfuIter)
+{ 
+    bool ret = false;
+
+    if (lfuIter != lfuIndex.end())
+    {
+
+         Block::block_t b;
+         b.objID = lfuIter->second->objID;
+         b.blockID = lfuIter->second->blockID;
+
+        // cache index removal
+
+        CacheIndex::iterator blockIter = cacheIndex.find(b);
+        assert(blockIter != cacheIndex.end());
+        if (blockIter != cacheIndex.end())
+           cacheIndex.erase(blockIter);
+
+       // time index removal
+
+       FreqBlock::check_time_t ct;
+       ct.time = blockIter->second->time;
+       ct.checktime = blockIter->second->lastchecktime;
+       TimeIndex::iterator timeIter = timeIndex.find(ct);
+       assert(timeIter != timeIndex.end());
+       if (timeIter != timeIndex.end())
+          timeIndex.erase(timeIter);
+
+       // cache removal
+
+        cache.erase(lfuIter->second);
+
+       // lfu index removal        
+
+        lfuIndex.erase(lfuIter);
+
+        blockCount--;
+        ret = true;
+
+    }
+    return ret;
+};
+
+ bool
+LFUCache::blockGet(const Block::block_t& inBlock, const uint64_t& time)
+{
+  bool ret = false;
+
+    // update history: increase hit number
+    HistoryIndex::iterator histIter = historyIndex.find(inBlock);
+    if (histIter != historyIndex.end()) 
+    {   
+       if (histIter->second->demotetime != 0)
+       {
+          histIter->second->freq++; 
+          histIter->second->dist = time - histIter->second->demotetime;
+          histIter->second->demotetime = 0;
+       }
+    }
+
+  if (blockRemove(inBlock))
+  {
+    ret = true;
+  }
+
+  lasttime = time;
+
+  assert(blockCount >= 0);
+  return ret;
+};
+
+
+ bool
+LFUCache::blockPut(const Block::block_t& inBlock, const uint64_t& time)
+{
+  //  if it is cached already, just return
+  CacheIndex::iterator blockIter = cacheIndex.find(inBlock);
+  if (blockIter != cacheIndex.end())
+     return false;
+
+  // if it is full
+  if (isFull())
+  {
+    blockRemove(lfuIndex.begin());
+  }
+     
+
+  FreqBlock::freq_time_t ft;
+  ft.time = time;
+  ft.checktime = time;
+
+  // check history to get hit num;
+
+  HistoryIndex::iterator histIter = historyIndex.find(inBlock);
+  if (histIter != historyIndex.end()) {
+    ft.freq = histIter->second->freq;
+    ft.dist = histIter->second->dist;
+    histIter->second->demotetime = ft.time;
+  }
+  else
+  {
+    ft.freq = 0;
+    ft.dist = (uint64_t)-1;
+
+    // insert history cache
+ 
+    FreqBlock::history_t hist;
+    hist.freq = ft.freq;
+    hist.dist = ft.dist;
+    hist.demotetime = ft.time;
+    history.push_front(hist);
+    historyIndex[inBlock] = history.begin();
+  }
+
+  FreqBlock::freq_block_t fb;
+  fb.objID = inBlock.objID;
+  fb.blockID = inBlock.blockID;
+  fb.freq = ft.freq;
+  fb.dist = ft.dist;
+  fb.time = ft.time;
+  fb.lastchecktime = ft.checktime;
+
+  FreqBlock::check_time_t ct;
+  ct.time = fb.time;
+  ct.checktime = fb.lastchecktime;
+
+  // insert into cache and update index
+  cache.push_front(fb);
+  lfuIndex[ft] = cache.begin();
+  timeIndex[ct] = cache.begin();
+  cacheIndex[inBlock] = cache.begin();
+
+  blockCount++;
+  assert(blockCount <= blockCountMax);
+
+  lasttime = time;
+  updateoldBlock(time);
+
+  return true;
+};
+
+void
+LFUCache::updateoldBlock(uint64_t time)
+{
+ uint64_t distance;
+ FreqBlock::freq_time_t fb;
+ FreqBlock::check_time_t ct;
+ list<list<FreqBlock::freq_block_t>::iterator> rmlist;
+
+ for  (TimeIndex::iterator iter = timeIndex.begin();
+    iter != timeIndex.end(); iter++ ) 
+ {
+     distance = time - iter->second->lastchecktime; 
+ 
+     if (distance > 3*blockCountMax/2)
+     {
+         rmlist.push_front(iter->second); 
+     }
+     else
+         break;
+ }
+
+ while (!rmlist.empty())
+ {
+      if ((*(rmlist.begin()))->freq == 0)
+      {
+         blockRemove (*(rmlist.begin())); 
+      }
+      else
+      {
+         fb.time = (*(rmlist.begin()))->time;
+         fb.checktime = (*(rmlist.begin()))->lastchecktime;
+         fb.dist = (*(rmlist.begin()))->dist;
+         fb.freq = (*(rmlist.begin()))->freq;
+  
+         LFUIndex::iterator lfuiter = lfuIndex.find (fb);
+         if (lfuiter != lfuIndex.end())
+         {
+            lfuIndex.erase(lfuiter);
+            /* if ((*(rmlist.begin()))->freq > 16)
+               (*(rmlist.begin()))->freq = 16;
+            else
+               (*(rmlist.begin()))->freq++; */
+
+            (*(rmlist.begin()))->freq = (*(rmlist.begin()))->freq/2;
+            fb.freq = (*(rmlist.begin()))->freq;
+            fb.checktime = time;         
+            lfuIndex[fb] = (*(rmlist.begin()));
+         }
+         else 
+             printf (" lfu erre\n");
+        
+         ct.time = (*(rmlist.begin()))->time;
+         ct.checktime = (*(rmlist.begin()))->lastchecktime;         
+
+         TimeIndex::iterator timeiter = timeIndex.find (ct);
+         if (timeiter != timeIndex.end())
+         {
+            timeIndex.erase(timeiter);
+            (*(rmlist.begin()))->lastchecktime = time;
+            ct.checktime = (*(rmlist.begin()))->lastchecktime;
+            timeIndex[ct] = (*(rmlist.begin()));
+         }
+         else 
+             printf (" lfu erre\n");
+      }
+      rmlist.pop_front();
+ } 
+}
+
+
+
+ bool
+LFUCache::isCached(const Block::block_t& inBlock) const
+{
+  return (cacheIndex.find(inBlock) != cacheIndex.end());
+};
+
+ bool
+LFUCache::isFull() const
+{
+  return (blockCount == blockCountMax);
+};
+
+void
+LFUCache::postShow()
+{
+ uint64_t distance, freq;
+ uint64_t leftdist[MAXDIS][MAXACC+1] ;
+ Block::block_t bk;
+ 
+ for (int i = 0; i < MAXDIS; i++)
+   for (int j = 0; j < MAXACC + 1; j++)
+   leftdist[i][j] = 0;
+
+ for (list<FreqBlock::freq_block_t>::iterator iter = cache.begin(); iter != cache.end(); iter++)
+ {
+   distance = lasttime - iter->time;
+
+             if (distance > 0)
+             {
+                distance =  distance/16;
+                if (distance > 0)
+                  distance = log2(distance) + 2;
+                else 
+                  distance = 1;
+             }
+  
+            if (distance > (MAXDIS - 1))
+                 distance = MAXDIS - 1;
+
+  leftdist[distance][MAXACC]++;
+
+  bk.objID = iter->objID;
+  bk.blockID = iter->blockID;
+
+  HistoryIndex::iterator histIter = historyIndex.find(bk);
+  if (histIter != historyIndex.end()) {
+    freq = histIter->second->freq;
+  }
+  else
+    freq = 0;
+
+  if (freq > 0)
+     freq = log2(freq) + 1;
+    
+  if (freq > (MAXACC - 1))
+        freq = MAXACC - 1;
+ 
+  leftdist[distance][freq]++;
+  
+ }
+   
+
+      printf("\tDistance\tNumber\tFreq\tNumber\n");
+
+           for (int i = 0; i < MAXDIS; i++)
+           for (int j = 0; j < MAXACC; j++)
+           { 
+              if (leftdist[i][j] > 0)
+                printf("\t%s\t%llu\t%s\t%llu\n", dis_char[i],leftdist[i][MAXACC],
+                        access2[j], leftdist[i][j]);
+           }
+
+
+
+}

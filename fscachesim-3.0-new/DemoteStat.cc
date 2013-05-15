@@ -1,0 +1,366 @@
+#include <list>
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif /* HAVE_STDINT_H */
+#include <stdio.h>
+#include <stdlib.h>
+
+
+#include <stdint.h>
+#include "DemoteStat.hh"
+#include "math.h"
+#include "util.hh"
+
+
+DemoteStat::DemoteStat() :
+    demoteCount(0),
+    demoteNum(0),
+    hitNum(0),
+    missNum(0),
+    blockNum(0),
+    hitPerc(0)
+{
+
+  for (int i = 0; i < MAXACC; i++)
+  {
+    for (int j = 0; j < 6; j++)
+      freq_stat[i][j] = 0;
+    for (int j = 0; j < 5; j++)
+      freq_perc[i][j] = 0;
+    for (int j = 0; j < 4; j++)
+    {
+      freq_dist_mv[i][j] = 0; 
+    }     
+    for (int j = 0; j < MAXDIS; j++)
+    {
+      freq_dist_spec[i][j][0] = 0;  
+      freq_dist_spec[i][j][1] = 0; 
+    } 
+  }
+  for (int i = 0; i < MAXDIS; i++)
+  {
+    demote_distance[i] = 0;
+    for (int k = 0; k < MAXDIS; k++)
+    {
+        d_r_dist[i][k][0] = 0;
+        d_r_dist[i][k][1] = 0;
+    }
+  }
+
+
+}
+
+ 
+DemoteStat::~DemoteStat()
+{ 
+    
+}
+
+  void
+DemoteStat::Calc()
+{
+
+    // statistics
+
+      UpdateStat();
+
+    // freq_distance mean and freq_distance
+
+      CalcMandV();
+
+    // freq_perc
+      CalcPerc();
+
+}
+
+void
+DemoteStat::UpdateStat()
+{
+  uint64_t ref, logRef, dist, prevdist; 
+
+
+  blockNum  = demotestat.size();
+
+  if (blockNum <= 0)
+    return; 
+
+  missNum = demoteNum - hitNum;
+  hitPerc = (double)hitNum/(double)demoteNum;
+
+  for (list<demote_t>::iterator iter = demotestat.begin(); iter != demotestat.end(); iter++)
+  {
+
+    // freq_data
+ 
+    if (iter->demoteFreq == 0)
+        continue;
+
+    ref = iter->demoteFreq;
+    if (ref > 0) 
+       logRef = log2(ref) + 1;
+    else
+       logRef = 0;
+    if (logRef > (MAXACC - 1))
+      logRef = MAXACC - 1;
+
+    freq_stat[logRef][0]++;
+
+    if (iter->demoteFreq == iter->hitFreq)
+      freq_stat[logRef][1]++; 
+    else
+    {
+      freq_stat[logRef][2]++;
+      freq_stat[logRef][5]++;
+    }
+
+    freq_stat[logRef][3] = freq_stat[logRef][3] + ref;
+    freq_stat[logRef][4] = freq_stat[logRef][4] + iter->hitFreq;
+
+
+    // freq_distance
+
+   for (int i = 0; i < MAXDIS; i++)
+   {
+      freq_dist_spec[logRef][i][0] += iter->d_r_dist[i];
+      demote_distance[i] += iter->d_r_dist[i];
+
+      freq_dist_spec[logRef][i][1] += iter->r_d_dist[i];
+   }
+
+   }
+}
+
+void
+DemoteStat::CalcPerc()
+{
+  for (int i = 0; i < MAXACC; i++)
+  {
+     freq_perc[i][0] = (double)freq_stat[i][0]/(double)blockNum;  
+     freq_perc[i][1] = (double)freq_stat[i][3]/(double)demoteNum;
+     if  (hitNum > 0)               
+        freq_perc[i][2] = (double)freq_stat[i][4]/(double)hitNum;
+     if  (missNum > 0)
+        freq_perc[i][3] = (double)freq_stat[i][5]/(double)missNum;
+     if  (freq_stat[i][3] > 0)
+        freq_perc[i][4] = (double)freq_stat[i][4]/(double)freq_stat[i][3];
+  }
+}
+
+void
+DemoteStat::CalcMandV()
+{
+    // freq_distance mean
+
+      CalcVariance (-1, 0);
+
+    // freq_distance variance
+
+      CalcVariance (0, 1);
+
+    // log normal mean and variance
+
+   uint64_t  dist;
+   for (int i = 1; i < MAXACC; i++)
+       for (int k = 0; k < 4; k++)
+       {
+           dist = freq_dist_mv[i][k];
+           if (dist > 0)
+           {
+               dist = dist/16;
+               if (dist > 0)
+                   dist = log2(dist) + 2;
+               else 
+                   dist = 1;
+           }
+           if (dist > (MAXDIS - 1))
+               dist = MAXDIS - 1;
+           freq_dist_mv[i][k] = dist;
+       } 
+}
+void
+DemoteStat::CalcVariance(int mean_pos, int variance_pos)
+{
+   uint64_t m[2], dist, md, freq; 
+
+   for (int i = 1; i < MAXACC; i++)
+   {
+     m[0] = 0;
+     m[1] = 0;
+
+     for (int j = 1; j < MAXDIS; j++)
+     {
+        for (int k = 0; k < 2; k++)
+        {
+           if (freq_dist_spec[i][j][k] > 0)
+           {
+              freq = freq_dist_spec[i][j][k];
+
+              if (j > 1)
+                dist = 16*(uint64_t)pow(2,j-2);
+              else 
+                dist = j;
+
+              if (mean_pos < 0)
+                 md = 0;
+              else
+                 md = freq_dist_mv[i][mean_pos + k*2];
+
+              if (dist > md)
+                dist = dist - md;
+              else
+                dist = md - dist;
+          
+              freq_dist_mv[i][variance_pos + k*2] += dist*freq;
+              m[k] += freq;
+           }
+        }     
+     }
+     for (int k = 0; k < 2; k++)
+     {
+        if (m[k] > 0)
+           freq_dist_mv[i][variance_pos + k*2] = freq_dist_mv[i][variance_pos + k*2]/m[k]; 
+
+     }
+
+   }   
+}
+
+  void
+DemoteStat::blockDemote(const block_t& inBlock, uint64_t time)
+{
+
+  uint64_t dist;
+
+  DemoteStatIndex::iterator blockIter = demotestatindex.find(inBlock);
+
+  if (blockIter != demotestatindex.end()) {
+
+      if (blockIter->second->demoteTime == 0)
+         demoteCount++;
+
+      if (blockIter->second->demoted)
+         return;
+
+      demoteNum++;
+
+      blockIter->second->demoteTime = time;
+      (blockIter->second->demoteFreq)++;
+      blockIter->second->demoted = true;
+
+      if (blockIter->second->demoteTime < blockIter->second->readTime)
+      {
+           printf("error: demote time less than read time\n");
+           exit(-1);
+      }
+
+        dist = blockIter->second->demoteTime - blockIter->second->readTime; 
+   
+        if (dist > 0)
+        {
+            dist = dist/16;
+            if (dist > 0)
+                 dist = log2(dist) + 2;
+            else 
+                 dist = 1;
+        }
+        if (dist > (MAXDIS - 1))
+            dist = MAXDIS - 1;
+
+        blockIter->second->r_d_dist[dist]++;
+        blockIter->second->l_r_d_dist = dist;
+
+
+  }
+  else
+  {
+    printf("error: can not find demote block in list\n");
+    exit(-1);
+
+  }
+
+
+};
+
+  bool
+DemoteStat::blockRead(const block_t& inBlock, uint64_t time)
+{
+  bool ret = false;
+  uint64_t dist;
+  DemoteStatIndex::iterator blockIter = demotestatindex.find(inBlock);
+
+  if (blockIter != demotestatindex.end()) {
+
+    if (blockIter->second->demoted)
+    {
+        dist = time - blockIter->second->demoteTime; 
+        (blockIter->second->hitFreq)++; 
+   
+        if (dist > 0)
+        {
+            dist = dist/16;
+            if (dist > 0)
+                 dist = log2(dist) + 2;
+            else 
+                 dist = 1;
+        }
+        if (dist > (MAXDIS - 1))
+            dist = MAXDIS - 1;
+
+        blockIter->second->d_r_dist[dist]++;
+
+        blockIter->second->demoted = false;
+
+        blockIter->second->readTime = time;
+
+        d_r_dist[blockIter->second->l_r_d_dist][dist][1]++;
+
+        if (blockIter->second->l_d_r_dist != 0)
+           d_r_dist[blockIter->second->l_d_r_dist][dist][0]++;
+
+        blockIter->second->l_d_r_dist = dist;
+
+        ret = true;
+        hitNum++;
+
+       if  (blockIter->second->hitFreq > blockIter->second->demoteFreq) 
+       {
+           printf("error: hit: %llu > demote %llu\n",
+              blockIter->second->hitFreq, blockIter->second->demoteFreq);
+           exit(-1);
+        }
+
+     }
+  }  
+  else
+  {
+    demote_t newDemote;
+
+    newDemote.objID = inBlock.objID;
+    newDemote.blockID = inBlock.blockID;
+
+    newDemote.demoteTime = 0; 
+    newDemote.readTime = time; 
+
+    newDemote.demoteFreq = 0; 
+    newDemote.hitFreq = 0;
+    newDemote.demoted = false;
+
+    for (int i = 0; i < MAXDIS; i++)
+    {
+      newDemote.r_d_dist[i] = 0;
+      newDemote.d_r_dist[i] = 0;
+    }
+
+    newDemote.l_r_d_dist = 0;
+    newDemote.l_d_r_dist = 0;
+
+    demotestat.push_front(newDemote);
+    demotestatindex[inBlock] = demotestat.begin();
+
+  }
+  return ret;
+
+};
+
+
+

@@ -1,0 +1,217 @@
+/*
+  RCS:          $Header: /afs/cs.cmu.edu/user/tmwong/Cvs/fscachesim/Cache.hh,v 1.11 2002/02/15 15:44:25 tmwong Exp $
+  Author:       T.M. Wong <tmwong+@cs.cmu.edu>
+*/
+
+#ifndef _BLOCKBUFFER_HH_
+#define _BLOCKBUFFER_HH_
+
+using namespace std;
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H */
+
+#define NDEBUG
+
+#include <assert.h>
+#include <list>
+#include <map>
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif /* HAVE_STDINT_H */
+
+#include "LocalBlock.hh"
+
+
+
+
+/**
+ * Cache object that supports insertions an its head and tail ends. A major
+ * failing of this class is that it does not perform comprehensive bounds
+ * checking during block insertions.
+ */
+class BlockBuffer {
+private:
+  typedef map<LocalBlock::block_data_t,
+	      list<LocalBlock::local_block_t>::iterator,
+	      LocalBlock::LessThan> CacheIndex;
+
+  /**
+   * The cache.
+   */
+  list<LocalBlock::local_block_t> cache;
+
+  /**
+   * An index into the cache, keyed by blocks.
+   */
+  CacheIndex cacheIndex;
+
+  /**
+   * The block count.
+   */
+  uint64_t blockCount;
+
+  /**
+   * The maximum block count.
+   */
+  uint64_t blockCountMax;
+
+private:
+  // Copy constructors - declared private and never defined
+
+  BlockBuffer(const BlockBuffer&);
+  BlockBuffer& operator=(const BlockBuffer&);
+
+public:
+  /**
+   * Create a Cache object.
+   *
+   * @param inCacheSize The maximum number of blocks the cache can hold.
+   */
+  BlockBuffer(uint64_t inCacheSize) :
+    cache(),
+    cacheIndex(),
+    blockCount(0),
+    blockCountMax(inCacheSize) { ; };
+
+  /**
+   * Destroy a Cache object.
+   */
+  ~BlockBuffer() { ; };
+
+  /**
+   * Get a block from the cache. Decrement the block count if the block is
+   * found. Otherwise, do nothing.
+   *
+   * @param inBlock The block to get.
+   */
+  void blockGet( LocalBlock::local_block_t& inBlock);
+
+
+  /**
+   * Get the block at the head of the cache. Copy the block into outBlock
+   * and decrement the block count if the cache is not empty. Otherwise, do
+   * nothing.
+   *
+   * @param outBlock An output block.
+   */
+  void blockGetAtHead(LocalBlock::local_block_t& outBlock);
+
+  /**
+   * Put a block at the head of the cache.
+   *
+   * @warning Does not check if the cache is already full.
+   *
+   * @param outBlock The block to put.
+   */
+  void blockPutAtHead(const LocalBlock::local_block_t& inBlock);
+
+  /**
+   * Put a block at the tail of the cache.
+   *
+   * @warning Does not check if the cache is already full.
+   *
+   * @param outBlock The block to put.
+   */
+  void blockPutAtTail(const LocalBlock::local_block_t& inBlock);
+
+  /**
+   * Get the count of blocks in the cache.
+   */
+  uint64_t sizeGet() const { return (blockCountMax);};
+
+   bool isEmpty() const { return (cache.empty());};
+
+  /**
+   * Find out if inBlock is cached. If it is, return true. Otherwise,
+   * return false.
+   *
+   * @param inBlock The block to find.
+   */
+  bool isCached(const LocalBlock::local_block_t& inBlock) const;
+
+  /**
+   * Find out if the cache is full. If it is, return true. Otherwise,
+   * return false.
+   */
+  bool isFull() const;
+
+  uint64_t totalRef() const;
+};
+
+
+
+
+
+inline void
+BlockBuffer::blockGet(LocalBlock::local_block_t& inBlock)
+{
+  CacheIndex::iterator blockIter = cacheIndex.find(inBlock.data);
+  if (blockIter != cacheIndex.end()) {
+    inBlock = *(blockIter->second);
+    cache.erase(blockIter->second); 
+    cacheIndex.erase(blockIter);
+    blockCount--;
+  }
+  assert(blockCount >= 0);
+};
+
+inline void
+BlockBuffer::blockGetAtHead(LocalBlock::local_block_t& outBlock)
+{
+  if (!cache.empty()) {
+    outBlock = *cache.begin();
+    cacheIndex.erase(cache.front().data);
+    cache.pop_front();
+    blockCount--;
+  }
+  assert(blockCount >= 0);
+}; 
+
+
+
+inline void
+BlockBuffer::blockPutAtHead(const LocalBlock::local_block_t& inBlock)
+{
+  blockCount++;
+  cache.push_front(inBlock);
+  cacheIndex[inBlock.data] = cache.begin();
+  assert(blockCount <= blockCountMax);
+};
+
+inline void
+BlockBuffer::blockPutAtTail(const LocalBlock::local_block_t& inBlock)
+{
+  blockCount++;
+  cache.push_back(inBlock);
+  cacheIndex[inBlock.data] = --cache.end();
+  assert(blockCount <= blockCountMax);
+};
+
+inline bool
+BlockBuffer::isCached(const LocalBlock::local_block_t& inBlock) const
+{
+  return (cacheIndex.find(inBlock.data) != cacheIndex.end());
+};
+
+inline bool
+BlockBuffer::isFull() const
+{
+  return (blockCount == blockCountMax);
+};
+
+inline uint64_t
+BlockBuffer::totalRef() const
+{
+  uint64_t ref = 0;
+
+  list<LocalBlock::local_block_t>::const_iterator a;
+  for (a = cache.begin(); a != cache.end(); a++)
+  {
+    ref = ref + a->refNum;
+  }
+  return ref;
+};
+
+#endif /* _BLOCKBUFFER_HH_ */

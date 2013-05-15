@@ -1,0 +1,16 @@
+/fscachesim -d LRUDemoteAnyCoop 16 64 traces/920418.txt traces/920419.txt traces/920421.txt traces/920422.txt traces/920423.txt traces/920424.txt traces/920425.txt  traces/920426.txt traces/920427.txt traces/920428.txt traces/920429.txt traces/920430.txt  traces/920506.txt traces/920519.txt traces/920611.txt traces/920613.txt                                                                                                 
+
+
+./fscachesim -d LRUDemoteAnyCoop 16 64 traces/920418.txt traces/920419.txt traces/920426.txt traces/920427.txt traces/920506.txt traces/920519.txt traces/920611.txt traces/920613.txt
+
+
+ ./fscachesim -d LRUDemoteAnyCoop  16 256 traces/920427.txt traces/920506.txt traces/920519.txt
+traces/920611.txt
+
+
+
+./fscachesim -a -d 2SDemote 512 2048 trace/db2.0.txt trace/db2.1.txt trace/db2.2.txt trace/db2.3.txt trace/db2.4.txt trace/db2.5.txt trace/db2.6.txt  trace/db2.7.txt >> result/db2.txt
+
+./fscachesim -d LFUDemoteCoop 8 32 trace/httpd.1.txt trace/httpd.2.txt trace/httpd.3.txt trace/httpd.4.txt trace/httpd.5.txt trace/httpd.6.txt  trace/httpd.7.txt
+
+./RDMARegSim -a LRU 1024 32 trace/httpd.1.txt trace/httpd.2.txt trace/httpd.3.txt trace/httpd.4.txt trace/httpd.5.txt trace/httpd.6.txt  trace/httpd.7.txt

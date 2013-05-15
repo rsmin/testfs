@@ -1,0 +1,114 @@
+/*
+  RCS:          $Header: /afs/cs.cmu.edu/user/tmwong/Cvs/fsDemoteStatsim/DemoteStat.hh,v 1.11 2002/02/15 15:44:25 tmwong Exp $
+  Author:       T.M. Wong <tmwong+@cs.cmu.edu>
+*/
+
+#ifndef _DEMOTESTAT_HH_
+#define _DEMOTESTAT_HH_
+
+using namespace std;
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H */
+
+#define NDEBUG
+
+#include <assert.h>
+#include <list>
+#include <map>
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif /* HAVE_STDINT_H */
+
+#include "DemoteBlock.hh"
+#include "Block.hh"
+
+using DemoteBlock::demote_stat_t;
+using DemoteBlock::demote_t;
+using Block::block_t;
+
+
+/**
+ * DemoteStat object that supports insertions an its head and tail ends. A major
+ * failing of this class is that it does not perform comprehensive bounds
+ * checking during block insertions.
+ */
+
+typedef 
+
+class DemoteStat {
+
+private:
+
+  typedef map<block_t,
+	      list<demote_t *>::iterator,
+	      Block::LessThan> DemoteStatIndex;
+
+
+
+  list<demote_t *> demotestat;
+
+
+  DemoteStatIndex demotestatindex;
+
+public:
+
+  uint64_t demoteNum;
+  uint64_t hitNum,missNum;
+  double hitPerc; 
+  uint64_t blockNum;
+
+// # block, # all hit block, #one miss block, # demote, # hits, # misses 
+  uint64_t freq_stat[MAXACC][6]; 
+
+// perc of block, perc of block demote, perc of block total hits, 
+// perc of block total misses, perc of hits in this freq
+  double freq_perc[MAXACC][5]; 
+
+// d_r_distance mean, d_r_distance variance, r_d_distance mean, r_d_distance variance
+  uint64_t freq_dist[MAXACC][4];  
+  uint64_t freq_dist_mv[MAXACC][4];
+ 
+// d_r_distance, r_d_distance 
+  uint64_t freq_dist_spec[MAXACC][MAXDIS][2];
+
+// freq previous-dist dist
+  uint64_t d_r_dist[MAXACC][MAXDIS][MAXDIS];
+
+private:
+
+
+  DemoteStat(const DemoteStat&);
+  DemoteStat& operator=(const DemoteStat&);
+
+  void CalcVariance(int mean_pos, int variance_pos);
+  void CalcPerc();
+  void UpdateStat();
+  void CalcMandV();
+
+  uint64_t demoteCount;
+
+public:
+
+  DemoteStat();
+
+  ~DemoteStat();
+
+
+
+  void blockDemote(const block_t& inBlock, uint64_t time);
+  bool blockRead(const block_t& inBlock, uint64_t time);
+
+  bool demotegetHead(demote_t **demoteBlock);
+
+  void Calc();
+
+  uint64_t sizeGet() const { return (demoteCount);};
+
+
+
+};
+
+
+#endif /* _DEMOTESTAT_HH_ */

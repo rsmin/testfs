@@ -1,0 +1,187 @@
+/*
+  RCS:          $Header: /afs/cs.cmu.edu/user/tmwong/Cvs/fscachesim/StoreCacheSeg.cc,v 1.4 2002/02/18 00:23:45 tmwong Exp $
+  Author:       T.M. Wong <tmwong+@cs.cmu.edu>
+*/
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H */
+
+#include <math.h>
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif /* HAVE_STDINT_H */
+#include <stdio.h>
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif /* HAVE_STDLIB_H */
+
+#include "Block.hh"
+#include "IORequest.hh"
+
+#include "StoreCache4SCoop.hh"
+
+using Block::block_t;
+using LocalBlock::local_block_t;
+
+int
+StoreCache4SCoop::blockGetCascade(LocalBlock::local_block_t& inBlock,
+IORequest::IORequestOp_t op, bool keep)
+{
+  int retval = -1;
+
+  if (cache.isCached(inBlock))
+  {
+      retval = 4;
+      cache.blockGet(inBlock);
+  }
+  else 
+  {
+     if (keep)
+     {
+       if (FQ.blockGet(inBlock))
+         retval = 3;
+     }
+     else  
+        retval = FQ.blockGetCascade(inBlock);
+  }
+  return (retval);
+}
+
+void
+StoreCache4SCoop::blockPutAtSegCascade(LocalBlock::local_block_t& inBlock,
+         int inSeg, IORequest::IORequestOp_t op)
+{
+    assert((inSeg < 1)||(inSeg > 4));
+
+    if (inSeg == 4)
+    {
+         if (cache.isFull())
+         {
+             LocalBlock::local_block_t ejectBlock;
+             cache.blockGetAtHead(ejectBlock);
+         }
+         cache.blockPutAtTail(inBlock);
+    }
+    else
+      FQ.blockPut(inBlock,inSeg);
+         
+}
+
+
+
+bool
+StoreCache4SCoop::ReadFromCache(const IORequest& inIOReq,
+			  const Block::block_t& inBlock) 
+{
+  bool ret = false; 
+
+  const char* reqOrig = inIOReq.origGet();
+  IORequest::IORequestOp_t op = inIOReq.opGet(); 
+  
+  LocalBlock::local_block_t aBlock;
+
+  aBlock.data.objID = inBlock.objID;
+  aBlock.data.blockID = inBlock.blockID;  
+
+  int blockSeg = blockGetCascade(aBlock, op);
+  if (blockSeg > 1) {
+      readHitsPerOrig[reqOrig]++;
+      readHits++; 
+
+      if (blockSeg == 4)
+      {
+         aBlock.refTime++;
+         blockSeg = aBlock.refNum/2 + 1;
+         if (blockSeg > 3)
+            blockSeg = 3;
+//         blockPutAtSegCascade(aBlock,blockSeg,op);          //need to tune;
+
+      }
+
+      ret = true;
+  }
+  else {
+
+      readMissesPerOrig[reqOrig]++;
+      readMisses++;
+
+
+  }
+
+  return ret;
+}
+
+void
+StoreCache4SCoop::DemoteToCache(const IORequest& inIOReq,
+			  const Block::block_t& inBlock)
+{
+
+  const char* reqOrig = inIOReq.origGet();
+  IORequest::IORequestOp_t op = inIOReq.opGet();
+  bool upCached = true;
+
+  LocalBlock::local_block_t aBlock;
+
+  aBlock.data.objID = inBlock.objID;
+  aBlock.data.blockID = inBlock.blockID;
+
+     if (!cooperative.isCached(inBlock))
+       upCached = false;
+
+
+  int blockSeg = blockGetCascade(aBlock, op, false);
+  if (blockSeg > 1) {
+      demoteHitsPerOrig[reqOrig]++;
+      demoteHits++;
+ 
+      assert(blockSeg == 4);
+
+       if (!upCached)
+       {
+           blockPutAtSegCascade(aBlock, 4, op); 
+       }
+       else
+           blockPutAtSegCascade(aBlock, 3, op);
+
+  }
+  else { 
+       
+     demoteMissesPerOrig[reqOrig]++;
+     demoteMisses++; 
+ 
+     if (!upCached)
+     {
+         blockSeg = 4; 
+     }
+     else
+        blockSeg = 3;
+
+     aBlock.refNum = 0;
+     blockPutAtSegCascade(aBlock, blockSeg, op);
+
+  }
+}
+
+
+
+void
+StoreCache4SCoop::statisticsShow() const
+{
+  printf("{StoreCache4SCoop.%s\n", nameGet());
+
+if (mode != Analyze)
+{
+  uint64_t size;
+  size = cache.sizeGet()+FQ.sizeGet(); 
+ 
+  printf("\t{size {total=%llu} }\n", size * blockSizeGet());
+
+
+}
+  StoreCache::statisticsShow();
+if (mode != Analyze)
+{
+  printf("}\n");
+}
+}

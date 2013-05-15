@@ -1,0 +1,184 @@
+using namespace std;
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H */
+
+#define NDEBUG
+
+#include <assert.h>
+#include <list>
+#include <map>
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif /* HAVE_STDINT_H */
+
+#include "MemoryRegion.hh"
+#include "RegCache.hh"
+
+
+void RegCache::RegionRef(const MemoryRegion::memory_region_t& inRegion)
+{
+  list<MemoryRegion::memory_region_t> mr;
+  uint64_t regsize = 0;  
+
+  RegCacheIndex::iterator regionIter = cacheIndex.upper_bound(inRegion); 
+
+  CalcReg(regionIter, inRegion, mr, regsize);
+
+  if (mr.empty())
+    return;
+   
+  if (regsize == 0)
+  {
+    printf("regsize %llu\n",regsize);
+  }
+
+  if (regsize >= blockCountMax)
+  {
+    totaltime += regsize*REG_PERPAGE + REG_PERREG;
+    printf("great regsize %llu\n",regsize);
+    return;
+  }
+
+  if (blockCount + regsize > blockCountMax)
+     EvictCache(regsize);
+
+
+  for (list<MemoryRegion::memory_region_t>::iterator i = mr.begin();
+    i != mr.end(); i++) {
+      addnewreg(*i);
+   }  
+
+}
+
+void RegCache::evictOne(uint64_t regsize)
+{
+   uint64_t unregsize = 0;
+
+   regsize = (blockCount>regsize?regsize:blockCount); 
+
+   while (blockCount + regsize > blockCountMax)
+   {
+      blockCount -= cache.begin()->len;
+      unregsize += cache.begin()->len;
+      cacheIndex.erase(*cache.begin());
+      cache.pop_front();
+   }
+   totaltime += unregsize*DISREG_PERPAGE + DISREG_PERREG;
+   assert(blockCount > 0);
+}
+
+
+void RegCache::evictBatch(uint64_t regsize)
+{
+   uint64_t unregsize = blockCountMax/10;
+   
+   unregsize = (unregsize>regsize?unregsize:regsize); 
+
+   evictOne(unregsize);
+
+}
+void RegCache::evictSL(uint64_t regsize)
+{
+    uint64_t resortsize = blockCountMax/5;
+    uint64_t evictsize = resortsize/22;
+
+    uint64_t unregsize = 0;
+
+    if (regsize > resortsize)
+    {
+       return evictOne(regsize);
+    }
+     
+    MemoryRegion::memory_region_t tmpMr; 
+    list<MemoryRegion::memory_region_t>::iterator cacheIter;
+    for (cacheIter = cache.begin();   
+          cacheIter != cache.end() && unregsize < resortsize; cacheIter++)
+    {
+       unregsize += cacheIter->len;
+       if (cacheIter->H == 0)
+       {
+           tmpMr = *cacheIter;
+           cacheIndex.erase(tmpMr); 
+           cacheIter->H = L + (double)1/(double)cacheIter->len;
+           tmpMr = *cacheIter;
+           cacheIndex[tmpMr] = cacheIter;
+       }
+      
+       evictIndex.insert(pair_resort (cacheIter->H, cacheIter));
+    }
+
+    unregsize = 0;
+    ResortIndex::iterator resIter;
+
+    for (resIter = evictIndex.begin(); resIter != evictIndex.end() && (unregsize < evictsize);
+         resIter++) 
+    {
+         unregsize += resIter->second->len;
+         blockCount -= resIter->second->len;
+         L = resIter->second->H;
+
+         tmpMr = *(resIter->second);
+         cacheIndex.erase(tmpMr);    
+         cache.erase(resIter->second); 
+    }
+
+    evictIndex.clear();
+
+    totaltime += unregsize*DISREG_PERPAGE + DISREG_PERREG;
+    assert(blockCount > 0);
+}
+
+void RegCache::sendtotail(RegCacheIndex::iterator& regionIter)
+{
+    MemoryRegion::memory_region_t mr= *(regionIter->second);
+
+    cacheIndex.erase(regionIter);
+    cache.erase(regionIter->second);
+
+    mr.H = 0;
+    cache.push_back(mr);
+    cacheIndex[mr] = --cache.end();
+
+
+}
+
+void RegCache::addnewreg(MemoryRegion::memory_region_t& inRegion)
+{
+  blockCount += inRegion.len;
+  inRegion.H = 0;
+  cache.push_back(inRegion);
+  cacheIndex[inRegion] = --cache.end();
+  assert(blockCount <= blockCountMax);
+  totaltime += inRegion.len*REG_PERPAGE + REG_PERREG;
+  assert(blockCount <= blockCountMax);
+}
+
+void RegCache::statisticsShow()
+{
+    printf("\t{regHits=%llu}\t{regMiss=%llu}\t{regPartHits=%llu}\n", reghit, regmiss, regparthit);
+    printf("\t{totalregtime=%lf}\n\n", totaltime);
+
+    if (log)
+    {
+       for (list<MemoryRegion::memory_region_t>::iterator i = cache.begin(); i != cache.end();
+            i++)
+            printf ("\t%llu\t%llu\t%llu\t%lf\n",i->objID, i->blockID, i->len,i->H);
+    }
+      
+}
+
+
+bool
+RegCache::isFull() const
+{
+  return (blockCount == blockCountMax);
+};
+
+
+bool
+RegCache::isEmpty() const
+{
+  return (cache.empty());
+};

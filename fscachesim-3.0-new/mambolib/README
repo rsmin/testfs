@@ -1,0 +1,9 @@
+This directory contains simple programs and routines to manipulate
+trace records. 
+
+asc2bin: converts ascii trace to binary
+bin2asc: converts binary trace to ascii
+iotracelib.o: routines for accessing binary version of trace
+
+Anurag Acharya, acha@cs.umd.edu
+
