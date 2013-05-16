@@ -5,7 +5,7 @@ using namespace std;
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
+#endif /* HAVE_STDINT_H */
 
 #define NDEBUG
 
@@ -28,10 +28,6 @@ using namespace std;
 class writeCache {
 private:
 
-	const uint64_t read_latency;
-	const uint64_t write_latency;
-	const uint64_t spindown_latency;
-	const uint64_t spinup_latency;
 
   typedef struct {
 
@@ -40,11 +36,7 @@ private:
 
   } block_t;
 
-  typedef struct {
-	uint64_t objID;
-    uint64_t time;
-    char status; //the disk status should be 'A' for active, 'I' for Idle and 'S' for spinning down
-  } diskActivityHistory_t;
+
 
   typedef map<block_t,
 	      list<block_t>::iterator,
@@ -62,9 +54,6 @@ private:
   list<block_t> cache;
 
   cacheIndex cacheIndex;
-
- // Disk operation history  and index
-  list<diskActivityHistory_t> diskActivityHistory;
 
   /**
    * The block count.
@@ -152,29 +141,6 @@ public:
     bool writeIsFull() const;
     bool writeIsEmpty() const;
 
-    void putDiskActivityHistory
-    	(const diskActivityHistory_t inDiskActivityHistory)
-
-    void checkLastDiskActivity
-    	(diskActivityHistory_t& outLastDiskActivity)
-
-  };
-
-inline void
-writeCache::putDiskActivityHistory
-	(const diskActivityHistory_t inDiskActivityHistory)
-{
-	diskActivityHistory.push_front(inDiskActivityHistory);
-	diskActivityHistoryIndex[inDiskActivityHistory] = diskActivityHistory.begin();
-}
-
-inline void
-writeCache::checkLastDiskActivity(diskActivityHistory_t& outLastDiskActivity)
-{
-	if (!diskActivityHistory.empty())
-	outLastDiskActivity = *diskActivityHistory.begin();
-};
-
 
 
 
@@ -254,7 +220,7 @@ writeCache::checkLastDiskActivity(diskActivityHistory_t& outLastDiskActivity)
     return (cache.empty());
   };
 
-  #endif /* _CACHE_HH_ */
+
 
 
 #endif /* _LFUCACHE_HH_ */

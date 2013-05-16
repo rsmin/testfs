@@ -16,12 +16,14 @@
 #include "IORequest.hh"
 #include "writeCache.hh"
 #include "StoreCache.hh"
+#include "diskActivity.hh"
 
 
 
 class writeArrayPolicy : public StoreCache {
 protected:
   writeCache cache;
+  diskActivity diskAct;
 
 private:
   // Copy constructors - declared private and never defined
@@ -65,7 +67,7 @@ public:
 		   uint64_t inBlockSize,
 		   uint64_t inSize) :
    StoreCache(inName, inBlockSize, inSize),
-   cache(inSize) { ; };
+   cache(inSize){ ; };
 
   /**
    * Destroy the cache.

@@ -11,6 +11,7 @@
 #include "writeCache.hh"
 #include "IORequest.hh"
 #include "writeArrayPolicy.hh"
+#include "diskActivity.hh"
 
 using writeCache::block_t;
 using writeCache::diskActivityHistory_t;
