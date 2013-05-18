@@ -14,16 +14,15 @@
 
 #include "Block.hh"
 #include "IORequest.hh"
-#include "writeCache.hh"
+#include "Cache.hh"
 #include "StoreCache.hh"
 #include "diskActivity.hh"
 
-
-
 class writeArrayPolicy : public StoreCache {
 protected:
-  writeCache cache;
+  Cache cache;
   diskActivity diskAct;
+  diskActivity diskActWithoutSpindown;
 
 private:
   // Copy constructors - declared private and never defined
