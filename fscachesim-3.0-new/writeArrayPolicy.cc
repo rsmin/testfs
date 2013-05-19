@@ -119,6 +119,7 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 	    }
 	    break;
 	    case IORequest::Write:
+
 	    	//1. check the disk status
 	    	//2. if active then write
 	    	//3. if not active then write cache
