@@ -14,18 +14,15 @@
 
 #include "Block.hh"
 #include "IORequest.hh"
-#include "writeCache.hh"
+#include "Cache.hh"
 #include "StoreCache.hh"
 #include "diskActivity.hh"
 
-
-
 class writeArrayPolicy : public StoreCache {
-protected:
-  writeCache cache;
-  diskActivity diskAct;
-
 private:
+  Cache cache;
+  diskActivity diskAct;
+  diskActivity diskActWithoutSpindown;
   // Copy constructors - declared private and never defined
 
   writeArrayPolicy(const writeArrayPolicy&);
@@ -33,14 +30,9 @@ private:
 
 protected:
 
-  virtual void BlockCache(const IORequest& inIOReq,
+virtual void BlockCache(const IORequest& inIOReq,
 			  const Block::block_t& inBlock,
 			  list<IORequest>& outIOReqs);
-
-  virtual bool ReadFromCache(const IORequest& inIOReq,
-			  const Block::block_t& inBlock);
-  virtual void DemoteToCache(const IORequest& inIOReq,
-			  const Block::block_t& inBlock);
 
 
 
@@ -67,7 +59,7 @@ public:
 		   uint64_t inBlockSize,
 		   uint64_t inSize) :
    StoreCache(inName, inBlockSize, inSize),
-   cache(inSize){ ; };
+   cache(inSize) { ; };
 
   /**
    * Destroy the cache.
@@ -76,8 +68,8 @@ public:
 
   // Statistics management
 
-  virtual void statisticsShow() const;
-  virtual void beforeShow();
+ virtual void statisticsShow() {;};
+ virtual void beforeShow(){;};
 };
 
-#endif /* _STORECACHELFUCOOP_HH_ */
+#endif /* _WRITEARRAYPOLICY_HH_ */

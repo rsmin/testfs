@@ -71,6 +71,9 @@ protected:
   uint64_t readMisses;
 
   uint64_t cooperativeHits;
+//Added by Xiaodong
+  uint64_t writeMisses;
+  uint64_t writeHits;
 
 private:
   // Copy constructors - declared private and never defined

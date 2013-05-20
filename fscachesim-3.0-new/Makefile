@@ -144,6 +144,10 @@ fscachesim_SOURCES = \
 	DemoteStat.hh \
 	StoreCacheLFUCoop.cc \
 	StoreCacheLFUCoop.hh \
+	diskActivity.cc \
+	diskActivity.hh \
+	writeArrayPolicy.cc \
+	writeArrayPolicy.hh \
         FreqBlock.hh \
         LFUCache.hh \
         LFUCache.cc \

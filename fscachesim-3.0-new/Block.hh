@@ -32,6 +32,7 @@ namespace Block {
     uint64_t objID;
     /**
      * The block offset into the object.
+     * This should be the number of blocks in one request with my understanding Xiaodong;
      */
     uint64_t blockID;
 

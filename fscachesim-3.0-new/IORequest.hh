@@ -144,7 +144,7 @@ public:
 
   /**
    * Get the length of the request, in block.
-   *
+   *This function returns the number of blocks for each request.
    * @param inBlockSize The block size.
    */
   uint64_t blockLenGet(const uint64_t inBlockSize) const {

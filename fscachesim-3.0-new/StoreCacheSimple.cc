@@ -32,7 +32,7 @@ StoreCacheSimple::BlockCache(const IORequest& inIOReq,
   // See if the block is cached.
   block_t demoteBlock;
 
-  if (cache.isCached(inBlock)) {IORequest
+  if (cache.isCached(inBlock)) {
 
     // Eject the block (we will re-cache it later).
 
