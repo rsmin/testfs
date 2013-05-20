@@ -510,8 +510,6 @@ include	$(DEPDIR)/PindownCache.Po
 include	$(DEPDIR)/PindownBatchDeRegCache.Po
 include	$(DEPDIR)/MRRCache.Po
 include	$(DEPDIR)/MRRResortCache.Po
-include	$(DEPDIR)/writeArrayPolicy.Po
-include	$(DEPDIR)/diskActivity.Po
 
 distclean-depend:
 	-rm -rf $(DEPDIR)
