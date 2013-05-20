@@ -281,6 +281,7 @@ am_fscachesim_OBJECTS = Ghost.$(OBJEXT) \
         StoreCache2QCoop.$(OBJEXT)  StoreCache2SCoop.$(OBJEXT) 2QCache.$(OBJEXT) \
         4QCache.$(OBJEXT) StoreCache4SCoop.$(OBJEXT)  DemoteStat.$(OBJEXT) fscachesim.$(OBJEXT)  \
         StoreCacheLFUCoop.$(OBJEXT) LFUCache.$(OBJEXT) util.$(OBJEXT) \
+        writeArrayPolicy.$(OBJEXT) diskActivity.$(OBJEXT) \
         top-down-size-splay.$(OBJEXT)
 fscachesim_OBJECTS = $(am_fscachesim_OBJECTS)
 fscachesim_LDADD = $(LDADD)
@@ -357,6 +358,8 @@ DEP_FILES = $(DEPDIR)/Ghost.Po \
         $(DEPDIR)/util.Po \
         $(DEPDIR)/StoreCache2Q.Po \
         $(DEPDIR)/StoreCacheMQ.Po \
+        $(DEPDIR)/diskActivity.Po \
+        $(DEPDIR)/writeArrayPolicy.Po \
 	$(DEPDIR)/StoreCacheLRU2Address.Po \
         $(DEPDIR)/PindownResortCache.Po
 
@@ -507,7 +510,8 @@ include	$(DEPDIR)/PindownCache.Po
 include	$(DEPDIR)/PindownBatchDeRegCache.Po
 include	$(DEPDIR)/MRRCache.Po
 include	$(DEPDIR)/MRRResortCache.Po
-
+include	$(DEPDIR)/writeArrayPolicy.Po
+include	$(DEPDIR)/diskActivity.Po
 
 distclean-depend:
 	-rm -rf $(DEPDIR)
