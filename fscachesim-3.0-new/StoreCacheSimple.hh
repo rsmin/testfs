@@ -57,7 +57,7 @@ private:
   StoreCacheSimple& operator=(const StoreCacheSimple&);
 
 protected:
-  virtual void BlockCache(const IORequest& inIOReq,
+	virtual void BlockCache(const IORequest& inIOReq,
 			  const Block::block_t& inBlock,
 			  list<IORequest>& outIOReqs);
 

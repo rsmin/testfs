@@ -25,16 +25,15 @@ private:
   diskActivity diskActWithoutSpindown;
   // Copy constructors - declared private and never defined
 
+private:
   writeArrayPolicy(const writeArrayPolicy&);
   writeArrayPolicy& operator=(const writeArrayPolicy&);
 
 protected:
 
-virtual void BlockCache(const IORequest& inIOReq,
+  virtual void BlockCache(const IORequest& inIOReq,
 			  const Block::block_t& inBlock,
 			  list<IORequest>& outIOReqs);
-
-
 
 public:
   // Constructors and destructors
@@ -59,7 +58,9 @@ public:
 		   uint64_t inBlockSize,
 		   uint64_t inSize) :
    StoreCache(inName, inBlockSize, inSize),
-   cache(inSize) { ; };
+   cache(inSize),
+   diskActWithoutSpindown(),
+   diskAct() { ; };
 
   /**
    * Destroy the cache.
