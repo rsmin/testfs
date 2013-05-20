@@ -73,7 +73,7 @@ fscachesim.o fscachesim.o: fscachesim.cc config.h /usr/include/fcntl.h \
   StoreCacheMQ.hh FCache.hh StoreCacheLRUCoop.hh StoreCacheSimpleCoop.hh \
   StoreCacheSegCoop.hh FreqBlock.hh StoreCache2QCoop.hh \
   StoreCache2SCoop.hh StoreCache4SCoop.hh 4QCache.hh StoreCacheLFUCoop.hh \
-  LFUCache.hh writeArrayPolicy.hh
+  LFUCache.hh writeArrayPolicy.hh diskActivity.hh
 
 config.h:
 
@@ -366,3 +366,5 @@ StoreCacheLFUCoop.hh:
 LFUCache.hh:
 
 writeArrayPolicy.hh:
+
+diskActivity.hh:

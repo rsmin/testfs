@@ -64,7 +64,7 @@ const int globalStoreCacheSegSegCount = 10;
 
 const int globalStoreCacheSegSegMultiplier = 2;
 
-const int writeCachetoArrayCacheRatio = 0.1; /*xiaodong this variable declare the write cache size ratio to array cache*/
+const double writeCachetoArrayCacheRatio = 0.1; /*xiaodong this variable declare the write cache size ratio to array cache*/
 
 
 

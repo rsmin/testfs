@@ -24,6 +24,7 @@ protected:
   diskActivity diskAct;
   diskActivity diskActWithoutSpindown;
 
+
 private:
   // Copy constructors - declared private and never defined
 
@@ -35,11 +36,6 @@ protected:
   virtual void BlockCache(const IORequest& inIOReq,
 			  const Block::block_t& inBlock,
 			  list<IORequest>& outIOReqs);
-
-  virtual bool ReadFromCache(const IORequest& inIOReq,
-			  const Block::block_t& inBlock);
-  virtual void DemoteToCache(const IORequest& inIOReq,
-			  const Block::block_t& inBlock);
 
 
 

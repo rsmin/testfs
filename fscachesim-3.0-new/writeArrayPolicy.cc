@@ -70,53 +70,8 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 
 	switch (inIOReq.opGet()) {
 	    case IORequest::Read:
-	    	if(inDiskActivity.time<=(outLastDiskActivity->time+outLastDiskActivity->duration))
-	    	{
-	    		//set spin wait time before record the activity.
-	 			diskAct.setSpinWaitTimeLen(inDiskActivity);
-	    		diskActWithoutSpindown.setSpinWaitTimeLen(inDiskActivity);
-	    		diskAct.putDiskActivityHistory(inDiskActivity);
-	    		diskActWithoutSpindown.putDiskActivityHistory(inDiskActivity);
-	    	}
-	    	else //set idle time and spindown time length
-	    	{
-	    		//without spindown mode setup
-	    		diskActivityHistory_t onlyIdleDiskActivity;
-	    		onlyIdleDiskActivity.objID = outLastDiskActivity->objID;
-	    		onlyIdleDiskActivity.time = outLastDiskActivity->time+outLastDiskActivity->duration;
-	    		onlyIdleDiskActivity.status='I';
-	    		onlyIdleDiskActivity.duration=inDiskActivity.time-onlyIdleDiskActivity.time;
-	    		diskActWithoutSpindown.setSpinWaitTimeLen(inDiskActivity);
-	    		diskActWithoutSpindown.putDiskActivityHistory(onlyIdleDiskActivity);
-	    		diskActWithoutSpindown.putDiskActivityHistory(inDiskActivity);
-	    		//spindown mode setup
-	    		diskActivityHistory_t defaultIdleDiskActivity, spindownDiskActivity;
-	    		defaultIdleDiskActivity = onlyIdleDiskActivity;
-	    		if(defaultIdleDiskActivity.duration > diskAct.spinWaitTimeLenGet(defaultIdleDiskActivity.objID))
-	    		{
-	    			diskAct.setSpinWaitTimeLen(inDiskActivity);
-	    			defaultIdleDiskActivity.duration = diskAct.spinWaitTimeLenGet(defaultIdleDiskActivity.objID);
-	    			//idle time before spin down
-	    			diskAct.putDiskActivityHistory(defaultIdleDiskActivity);
-	    			//spin down setting up
-	    			spindownDiskActivity.objID = defaultIdleDiskActivity.objID;
-	    			spindownDiskActivity.time = defaultIdleDiskActivity.time+defaultIdleDiskActivity.duration;
-	    			spindownDiskActivity.status='S';
-	    			spindownDiskActivity.duration=inDiskActivity.time-spindownDiskActivity.time;
-	    			if (spindownDiskActivity.duration<=0)
-	    				spindownDiskActivity.duration = 0;
-	    			diskAct.putDiskActivityHistory(spindownDiskActivity);
-	    			//record the incoming request activity
-	    			diskAct.putDiskActivityHistory(inDiskActivity);
-	    		}
-	    		else
-	    		{
-	    			diskAct.setSpinWaitTimeLen(inDiskActivity);
-		    		diskAct.putDiskActivityHistory(defaultIdleDiskActivity);
-		    		diskAct.putDiskActivityHistory(inDiskActivity);
-	    		}
-	    	}
-	    }
+	    	diskAct.writeDiskWithSpinDown(inDiskActivity);
+	    	diskActWithoutSpindown.writeDiskWithoutSpinDown(inDiskActivity);
 	    break;
 	    case IORequest::Write:
 
@@ -124,10 +79,42 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 	    	//2. if active then write
 	    	//3. if not active then write cache
 	    	//4. if cache is full then write cache
+	    	 if (cache.isFull()) {
+	    		 diskAct.writeDiskWithSpinDown(inDiskActivity);
+	    		 diskActWithoutSpindown.writeDiskWithoutSpinDown(inDiskActivity);
 
+	    			 block_t cacheBlock;
+	    			 diskActivityHistory_t cacheDisActivity;
+	    			 int writeCacheCount = 0;
+	    			 while(!cache.isEmpty())
+	    			 {
+	    				 cache.blockGetAtHead(cacheBlock);
+	    				 cacheDisActivity.objID=cacheBlock.objID;
+	    				 cacheDisActivity.status = 'A';
+	    				 cacheDisActivity.duration=cacheBlock.blockID*blockSize/diskAct.access_speedGet();
+	    				 outLastDiskActivity = diskAct.checkLastDiskActivity(cacheBlock.blockID);
+	    				 if (outLastDiskActivity->time+outLastDiskActivity->duration < inDiskActivity.time )
+	    				 {
+	    					 cacheDisActivity.time=inDiskActivity.time;
+	    					 diskAct.writeDiskWithSpinDown(cacheDisActivity);
+	    					 diskActWithoutSpindown.writeDiskWithoutSpinDown(cacheDisActivity);
+	    				 }
+	    				 else
+	    				 {
+	    					 cacheDisActivity.time = outLastDiskActivity->time+outLastDiskActivity;
+	    					 diskAct.putDiskActivityHistory(cacheDisActivity);
+	    					 diskActWithoutSpindown.putDiskActivityHistory(cacheDisActivity);
+	    				 }
+
+	    			 }
+	    	 }
+	    	else
+	    	{
+	    		cache.blockPutAtHead(inBlock);
+	    	}
 
 	    	break;
 	    default:
 	    	break;
-	    	}
+	}
 }

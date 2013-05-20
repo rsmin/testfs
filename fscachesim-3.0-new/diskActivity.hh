@@ -1,5 +1,6 @@
 #ifndef _DISKACTIVITY_HH_
 #define _DISKACTIVITY_HH_
+
 #include <map>
 #include <list>
 #include "IORequest.hh"
@@ -10,24 +11,21 @@
 class diskActivity{
 
 private:
-	const uint64_t access_speed /*Byte per s*/;
+	 double access_speed; /*Byte per s*/;
 //	const uint64_t write_speed;
-	const double spindown_latency;
-	const double spinup_latency;
+	 double spindown_latency;
+	 double spinup_latency;
 
-	const uint64_t idle_power;
-	const uint64_t active_power;
-	const uint64_t spin_power;
-	const uint64_t spindown_power;
-	const uint64_t spinup_power;
+	 double idle_power;
+	 double active_power;
+	 double spin_power;
+	 double spindown_power;
+	 double spinup_power;
+	 double spinWaitTimeDelta;
+	 double initSpintWaitTimeLen;
 
-	const double spinTimeLen_min =
-			((spindown_power-idle_power)*spindown_latency
-		+	(spinup_power-idle_power)*spinup_latency)
-		/(idle_power-spin_power);
+	 double spinTimeLen_min;
 
-	const double spinWaitTimeDelta;
-	const double initSpintWaitTimeLen;
 	double spinWaitTimeLen;
 
 
@@ -57,12 +55,34 @@ private:
 
 
 public:
+	diskActivity():
+		access_speed(10000000), /*Byte per s*/
+	//	const uint64_t write_speed;
+		spindown_latency(0.0004),
+		spinup_latency(0.0002),
+		idle_power(0.1),
+		active_power(5),
+		spin_power(0.002),
+		spindown_power(1),
+		spinup_power(1),
+		spinWaitTimeDelta(0.1),
+		initSpintWaitTimeLen(0.1),
+		spinTimeLen_min(
+					((spindown_power-idle_power)*spindown_latency
+				+	(spinup_power-idle_power)*spinup_latency)
+				/(idle_power-spin_power)),
+		spinWaitTimeLen(){;};
+
+	~diskActivity(){;};
 
 void putDiskActivityHistory
 	(const diskActivityHistory_t inDiskActivityHistory);
 
 diskActivityHistory_t* checkLastDiskActivity
 	(uint64_t objID);
+
+void writeDiskWithSpinDown(diskActivityHistory_t inDiskActivity);
+void writeDiskWithoutSpinDown(diskActivityHistory_t inDiskActivity);
 
 uint64_t access_speedGet() const{return (access_speed);};
 double spinTimeLen_minGet() const{return (spinTimeLen_min);};
@@ -71,8 +91,8 @@ double spinWaitTimeLenGet(uint64_t inObjID);
 void setSpinWaitTimeLen(diskActivityHistory_t inDiskActivity);
 
 bool isEmpty() const{return diskActivityHistory.empty();};
-};
 
+};
 
 
 
@@ -84,6 +104,6 @@ diskActivity::putDiskActivityHistory
 };
 
 
-
+#endif /* _DISKACTIVITY_HH_ */
 
 

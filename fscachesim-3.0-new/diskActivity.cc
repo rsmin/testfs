@@ -75,3 +75,64 @@ void diskActivity::setSpinWaitTimeLen(diskActivityHistory_t inDiskActivity)
 		spinWaitIndex[inObjID] = 0;
 
 }
+
+void diskActivity::writeDiskWithSpinDown(diskActivityHistory_t inDiskActivity){
+	diskActivityHistory_t* outLastDiskActivity;
+	outLastDiskActivity = checkLastDiskActivity(inDiskActivity.objID);
+
+		if(inDiskActivity.time<=(outLastDiskActivity->time+outLastDiskActivity->duration))
+			    	{
+			    		//set spin wait time before record the activity.
+			 			setSpinWaitTimeLen(inDiskActivity);
+			    		putDiskActivityHistory(inDiskActivity);
+			    	}
+			    	else //set idle time and spindown time length
+			    	{
+			    		//without spindown mode setup
+			    		diskActivityHistory_t onlyIdleDiskActivity;
+			    		onlyIdleDiskActivity.objID = outLastDiskActivity->objID;
+			    		onlyIdleDiskActivity.time = outLastDiskActivity->time+outLastDiskActivity->duration;
+			    		onlyIdleDiskActivity.status='I';
+			    		onlyIdleDiskActivity.duration=inDiskActivity.time-onlyIdleDiskActivity.time;
+			    		setSpinWaitTimeLen(inDiskActivity);
+			    		putDiskActivityHistory(onlyIdleDiskActivity);
+			    		putDiskActivityHistory(inDiskActivity);
+			    	}
+
+}
+
+void diskActivity::writeDiskWithoutSpinDown(diskActivityHistory_t inDiskActivity){
+	diskActivityHistory_t* outLastDiskActivity;
+	outLastDiskActivity = checkLastDiskActivity(inDiskActivity.objID);
+	diskActivityHistory_t defaultIdleDiskActivity, spindownDiskActivity;
+
+	defaultIdleDiskActivity.objID = outLastDiskActivity->objID;
+	defaultIdleDiskActivity.time = outLastDiskActivity->time+outLastDiskActivity->duration;
+	defaultIdleDiskActivity.status ='I';
+	defaultIdleDiskActivity.duration = inDiskActivity.time-defaultIdleDiskActivity.time;
+
+	if(defaultIdleDiskActivity.duration > spinWaitTimeLenGet(defaultIdleDiskActivity.objID))
+	{
+		setSpinWaitTimeLen(inDiskActivity);
+		defaultIdleDiskActivity.duration = spinWaitTimeLenGet(defaultIdleDiskActivity.objID);
+		//idle time before spin down
+		putDiskActivityHistory(defaultIdleDiskActivity);
+		//spin down setting up
+		spindownDiskActivity.objID = defaultIdleDiskActivity.objID;
+		spindownDiskActivity.time = defaultIdleDiskActivity.time+defaultIdleDiskActivity.duration;
+		spindownDiskActivity.status='S';
+		spindownDiskActivity.duration=inDiskActivity.time-spindownDiskActivity.time;
+		if (spindownDiskActivity.duration<=0)
+			spindownDiskActivity.duration = 0;
+		putDiskActivityHistory(spindownDiskActivity);
+		//record the incoming request activity
+		putDiskActivityHistory(inDiskActivity);
+	}
+	else
+	{
+		setSpinWaitTimeLen(inDiskActivity);
+		putDiskActivityHistory(defaultIdleDiskActivity);
+		putDiskActivityHistory(inDiskActivity);
+	}
+}
+
