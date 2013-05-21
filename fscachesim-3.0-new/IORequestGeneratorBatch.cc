@@ -49,7 +49,7 @@ IORequestGeneratorBatch::IORequestDown()
       break;
     default:
       // Warmups are always "done" if we never asked for any!
-
+    	printf("IORequestGeneratorBatch error");
       abort();
     }
   }

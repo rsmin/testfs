@@ -47,6 +47,7 @@ StoreCacheLRU2ADDRESS::BlockCache(const IORequest& inIOReq,
       readHits++;
       break;
     default:
+    	printf(" StoreCacheLRU2Address.cc error");
       abort();
     }
 
@@ -74,6 +75,7 @@ StoreCacheLRU2ADDRESS::BlockCache(const IORequest& inIOReq,
       readMisses++;
       break;
     default:
+    	printf(" StoreCacheLRU2Address.cc error 1");
       abort();
     }
   }

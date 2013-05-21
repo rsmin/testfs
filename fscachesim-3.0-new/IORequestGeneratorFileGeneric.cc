@@ -41,10 +41,12 @@ IORequestGeneratorFileGeneric::IORequestQueue()
     if (rc == EOF) {
       nextRequest = NULL;
       if (ferror(file)) {
+    	  printf(" IORequestGeneratorFileGeneric.cc error 1");
 	abort();
       }
 
       if (fclose(file) != 0) {
+    	  printf(" IORequestGeneratorFileGeneric.cc error 2");
 	abort();
       }
       file = NULL;

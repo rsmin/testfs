@@ -8,6 +8,20 @@
 #include <stdint.h>
 #endif /* HAVE_STDINT_H */
 
+using namespace std;
+
+namespace DiskActivity{
+typedef struct {
+	uint64_t objID;
+    double time;
+    double duration;
+    char status;
+    /*the disk status should be 'A' for active;
+     * 'I' for Idle;
+     * 'S' for spinning downd
+     */
+  } diskActivityHistory_t;
+
 class diskActivity{
 
 private:
@@ -28,30 +42,17 @@ private:
 
 	double spinWaitTimeLen;
 
+	map<uint64_t, double> spinWaitIndex; //to record objID & spinWaitTimeLen;
+	//	SpinWaitIndex spinWaitIndex;
+
+	// Disk operation history
+	list<diskActivityHistory_t> diskActivityHistory;
 
 private:
   // Copy constructors - declared private and never defined
 
 	diskActivity(const diskActivity&);
 	diskActivity& operator=(const diskActivity&);
-
-	map<uint64_t, double> spinWaitIndex; //to record objID & spinWaitTimeLen;
-
-	//history structure
-	typedef struct {
-		uint64_t objID;
-	    double time;
-	    double duration;
-	    char status;
-	    /*the disk status should be 'A' for active;
-	     * 'I' for Idle;
-	     * 'S' for spinning downd
-	     */
-	  } diskActivityHistory_t;
-	// Disk operation history
-	list<diskActivityHistory_t> diskActivityHistory;
-
-
 
 public:
 	diskActivity():
@@ -79,7 +80,7 @@ public:
 void putDiskActivityHistory
 	(const diskActivityHistory_t inDiskActivityHistory);
 
-diskActivityHistory_t* checkLastDiskActivity
+diskActivityHistory_t checkLastDiskActivity
 	(uint64_t objID);
 
 void writeDiskWithSpinDown(diskActivityHistory_t inDiskActivity);
@@ -104,6 +105,7 @@ diskActivity::putDiskActivityHistory
 	diskActivityHistory.push_front(inDiskActivityHistory);
 };
 
+}
 
 #endif /* _DISKACTIVITY_HH_ */
 

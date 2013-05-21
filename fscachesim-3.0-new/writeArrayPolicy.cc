@@ -15,10 +15,7 @@
 
 
 using Block::block_t;
-using diskActivity::diskActivityHistory_t;
-
-
-
+using DiskActivity::diskActivityHistory_t;
 /**
  * This cache maintains one ejection queue. The head of the queue is the
  * eject-me-next block. Hence, for LRU and MRU we add blocks at the tail
@@ -55,7 +52,7 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 			     list<IORequest>& outIOReqs)
 {
 	diskActivityHistory_t inDiskActivity;
-	diskActivityHistory_t* outLastDiskActivity;
+	diskActivityHistory_t outLastDiskActivity;
 
 	double const inIOReqDuration = inIOReq.lenGet()/diskAct.access_speedGet();
 
@@ -93,7 +90,7 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 	    				 cacheDisActivity.status = 'A';
 	    				 cacheDisActivity.duration=cacheBlock.blockID*blockSize/diskAct.access_speedGet();
 	    				 outLastDiskActivity = diskAct.checkLastDiskActivity(cacheBlock.blockID);
-	    				 if (outLastDiskActivity->time+outLastDiskActivity->duration < inDiskActivity.time )
+	    				 if (outLastDiskActivity.time+outLastDiskActivity.duration < inDiskActivity.time )
 	    				 {
 	    					 cacheDisActivity.time=inDiskActivity.time;
 	    					 diskAct.writeDiskWithSpinDown(cacheDisActivity);
@@ -101,7 +98,7 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 	    				 }
 	    				 else
 	    				 {
-	    					 cacheDisActivity.time = outLastDiskActivity->time+outLastDiskActivity;
+	    					 cacheDisActivity.time = outLastDiskActivity.time+outLastDiskActivity.duration;
 	    					 diskAct.putDiskActivityHistory(cacheDisActivity);
 	    					 diskActWithoutSpindown.putDiskActivityHistory(cacheDisActivity);
 	    				 }

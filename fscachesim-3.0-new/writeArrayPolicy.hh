@@ -18,6 +18,7 @@
 #include "StoreCache.hh"
 #include "diskActivity.hh"
 
+using DiskActivity::diskActivity;
 class writeArrayPolicy : public StoreCache {
 private:
   Cache cache;
@@ -69,8 +70,8 @@ public:
 
   // Statistics management
 
- virtual void statisticsShow() {;};
- virtual void beforeShow(){;};
+ virtual void statisticsShow() const;
+ virtual void beforeShow();
 };
 
 #endif /* _WRITEARRAYPOLICY_HH_ */

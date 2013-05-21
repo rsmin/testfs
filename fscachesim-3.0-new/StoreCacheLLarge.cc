@@ -47,6 +47,7 @@ StoreCacheLarge::BlockCache(const IORequest& inIOReq,
       readHits++;
       break;
     default:
+    	printf(" StoreCacheLLarge.cc error");
       abort();
     }
 
@@ -75,6 +76,7 @@ StoreCacheLarge::BlockCache(const IORequest& inIOReq,
       readMisses++;
       break;
     default:
+    	printf(" StoreCacheLLarge.cc error 2");
       abort();
     }
   }

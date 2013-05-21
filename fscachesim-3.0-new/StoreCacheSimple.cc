@@ -132,7 +132,7 @@ StoreCacheSimple::BlockCache(const IORequest& inIOReq,
     break;
   default:
     // Wow - we should not get here!
-
+	  printf(" Wow - we should not get here! error");
     abort();
   }
 }

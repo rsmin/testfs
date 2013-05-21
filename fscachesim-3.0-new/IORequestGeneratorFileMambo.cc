@@ -107,10 +107,12 @@ IORequestGeneratorFileMambo::IORequestQueue()
 
 	nextRequest = NULL;
 	if (ferror(file)) {
+		printf(" IORequestGeneratorFileMambo.cc error1");
 	  abort();
 	}
 
 	if (fclose(file) != 0) {
+		printf(" IORequestGeneratorFileMambo.cc error2");
 	  abort();
 	}
 	file = NULL;
