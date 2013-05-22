@@ -343,6 +343,8 @@ StoreCache::simulationShow() const
 
   printf("\t{demote {hits=%llu} {misses=%llu} }\n", demoteHits, demoteMisses);
 
+  //xiaodong add
+  printf("\t{write {hits=%llu} {misses=%llu} }\n", writeHits, writeMisses);
   printf("\t{coopHitsPerOrigPerOrig ");
   for (Char::Counter::const_iterator i = coopHitsPerOrig.begin();
        i != coopHitsPerOrig.end();

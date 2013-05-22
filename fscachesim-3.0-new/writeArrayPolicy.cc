@@ -15,7 +15,6 @@
 
 
 using Block::block_t;
-using DiskActivity::diskActivityHistory_t;
 /**
  * This cache maintains one ejection queue. The head of the queue is the
  * eject-me-next block. Hence, for LRU and MRU we add blocks at the tail
@@ -33,7 +32,7 @@ void writeArrayPolicy::beforeShow()
 void
 writeArrayPolicy::statisticsShow() const
 {
-  printf("{StoreCacheLRUCoop.%s\n", nameGet());
+  printf("{writeArrayPolicy.%s\n", nameGet());
 
   if (mode != Analyze)
      printf("\t{size {total=%llu} }\n", cache.sizeGet() * blockSizeGet());
@@ -46,13 +45,38 @@ writeArrayPolicy::statisticsShow() const
  }
 }
 
+void writeArrayPolicy::cacheCleanPolicy(){
+	block_t cacheBlock;
+	diskActivityHistory_t cacheDiskActivity;
+	while(!cache.isEmpty())
+	{
+		cache.blockGetAtHead(cacheBlock);
+		cacheDiskActivity.objID=cacheBlock.objID;
+		cacheDiskActivity.status = 'A';
+		cacheDiskActivity.duration=cacheBlock.blockID*blockSize/diskAct.access_speedGet();
+		outLastDiskActivity = diskAct.checkLastDiskActivity(cacheBlock.blockID);
+		if (outLastDiskActivity.time+outLastDiskActivity.duration < inDiskActivity.time )
+		{
+			cacheDiskActivity.time=inDiskActivity.time;
+			diskAct.writeDiskWithSpinDown(cacheDiskActivity);
+		  	diskActWithoutSpindown.writeDiskWithoutSpinDown(cacheDiskActivity);
+		}
+		else
+		{
+			cacheDiskActivity.time = outLastDiskActivity.time+outLastDiskActivity.duration;
+			diskAct.putDiskActivityHistory(cacheDiskActivity);
+			diskActWithoutSpindown.putDiskActivityHistory(cacheDiskActivity);
+		}
+
+	}
+};
+
 void
 writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 			     const block_t& inBlock,
 			     list<IORequest>& outIOReqs)
 {
-	diskActivityHistory_t inDiskActivity;
-	diskActivityHistory_t outLastDiskActivity;
+
 
 	double const inIOReqDuration = inIOReq.lenGet()/diskAct.access_speedGet();
 
@@ -63,50 +87,33 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 	//1. check disk last status
 	outLastDiskActivity = diskAct.checkLastDiskActivity(inDiskActivity.objID);
 
-
-
 	switch (inIOReq.opGet()) {
 	    case IORequest::Read:
 	    	diskAct.writeDiskWithSpinDown(inDiskActivity);
 	    	diskActWithoutSpindown.writeDiskWithoutSpinDown(inDiskActivity);
 	    break;
 	    case IORequest::Write:
-
+	    	writeCounts++;
 	    	//1. check the disk status
 	    	//2. if active then write
 	    	//3. if not active then write cache
 	    	//4. if cache is full then write cache
-	    	 if (cache.isFull()) {
-	    		 diskAct.writeDiskWithSpinDown(inDiskActivity);
-	    		 diskActWithoutSpindown.writeDiskWithoutSpinDown(inDiskActivity);
-
-	    			 block_t cacheBlock;
-	    			 diskActivityHistory_t cacheDisActivity;
-	    			 int writeCacheCount = 0;
-	    			 while(!cache.isEmpty())
-	    			 {
-	    				 cache.blockGetAtHead(cacheBlock);
-	    				 cacheDisActivity.objID=cacheBlock.objID;
-	    				 cacheDisActivity.status = 'A';
-	    				 cacheDisActivity.duration=cacheBlock.blockID*blockSize/diskAct.access_speedGet();
-	    				 outLastDiskActivity = diskAct.checkLastDiskActivity(cacheBlock.blockID);
-	    				 if (outLastDiskActivity.time+outLastDiskActivity.duration < inDiskActivity.time )
-	    				 {
-	    					 cacheDisActivity.time=inDiskActivity.time;
-	    					 diskAct.writeDiskWithSpinDown(cacheDisActivity);
-	    					 diskActWithoutSpindown.writeDiskWithoutSpinDown(cacheDisActivity);
-	    				 }
-	    				 else
-	    				 {
-	    					 cacheDisActivity.time = outLastDiskActivity.time+outLastDiskActivity.duration;
-	    					 diskAct.putDiskActivityHistory(cacheDisActivity);
-	    					 diskActWithoutSpindown.putDiskActivityHistory(cacheDisActivity);
-	    				 }
-
-	    			 }
-	    	 }
-	    	else
+	    	if (inDiskActivity.time<=outLastDiskActivity.time+outLastDiskActivity.duration
+	    			&& inDiskActivity.time>=outLastDiskActivity.time)
 	    	{
+	    		diskAct.writeDiskWithSpinDown(inDiskActivity);
+	    		diskActWithoutSpindown.writeDiskWithoutSpinDown(inDiskActivity);
+	    		cacheCleanPolicy();
+	    	}
+	    	else if(cache.isCached(inBlock)){
+	    		writeHits++;
+	    	}
+	    	else if (cache.isFull()) {
+	    		diskAct.writeDiskWithSpinDown(inDiskActivity);
+	    		diskActWithoutSpindown.writeDiskWithoutSpinDown(inDiskActivity);
+	    	 }
+	    	else{
+	    		writeHits++;
 	    		cache.blockPutAtHead(inBlock);
 	    	}
 
@@ -114,4 +121,4 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 	    default:
 	    	break;
 	}
-}
+};

@@ -18,12 +18,14 @@
 #include "StoreCache.hh"
 #include "diskActivity.hh"
 
-using DiskActivity::diskActivity;
+//using DiskActivity::diskActivityHistory_t;
 class writeArrayPolicy : public StoreCache {
 private:
   Cache cache;
   diskActivity diskAct;
   diskActivity diskActWithoutSpindown;
+  diskActivityHistory_t inDiskActivity;
+  diskActivityHistory_t outLastDiskActivity;
   // Copy constructors - declared private and never defined
 
 private:
@@ -56,13 +58,25 @@ public:
 
    */
   writeArrayPolicy(const char *inName,
+		   Store *inNextStore,
 		   uint64_t inBlockSize,
 		   uint64_t inSize) :
-   StoreCache(inName, inBlockSize, inSize),
+   StoreCache(inName, inNextStore,inBlockSize, inSize),
    cache(inSize),
    diskActWithoutSpindown(),
-   diskAct() { ; };
+   diskAct(){ ; };
 
+  writeArrayPolicy(const char *inName,
+  		   uint64_t inBlockSize,
+  		   uint64_t inSize) :
+     StoreCache(inName,inBlockSize, inSize),
+     cache(inSize),
+     diskActWithoutSpindown(),
+     diskAct(),
+     inDiskActivity(),
+     outLastDiskActivity(){ ; };
+
+void cacheCleanPolicy();
   /**
    * Destroy the cache.
    */

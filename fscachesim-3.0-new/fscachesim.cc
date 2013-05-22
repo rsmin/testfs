@@ -6,7 +6,9 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif /* HAVE_CONFIG_H */
-
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif /* HAVE_STDLIB_H */
 #include <fcntl.h>
 #include <functional>  
 #ifdef HAVE_STDINT_H 
@@ -192,20 +194,7 @@ main(int argc,
   uint64_t arraySizeMB = atol(argv[optind + 2]);
   uint64_t arraySize = arraySizeMB * (globalMBToB / blockSize);
 
-  /* Xiaodong Create write cache to process all write requests
-   *
-   */
-  uint64_t writeCacheSize = arraySize*writeCachetoArrayCacheRatio; /*define writeCacheSize*/
-  arraySize = arraySize-writeCacheSize;
 
-  writeArrayPolicy *writeArray = new writeArrayPolicy("writeArray",
-		  	  	  	  	  	  	  	  blockSize,
-		  	  	  	  	  	  	  	  writeCacheSize);
-
-  fprintf(stderr,
-	    "writeArray: "
-	    "Simple array, size %llu MB process policy WritDisk\n",
-	    writeCacheSize);
 
 
   // Create an array cache to receive all I/O requests that miss in the
@@ -452,20 +441,34 @@ main(int argc,
 			    StoreCacheSimple::None));
     client->changemode(runMode);
 
+    /* Xiaodong Create write cache to process all write requests
+       *
+       */
+      uint64_t writeCacheSize = arraySize*writeCachetoArrayCacheRatio; /*define writeCacheSize*/
+      arraySize = arraySize-writeCacheSize;
+printf("writeCacheSize: [%llu]\n arraySize: [%llu]\n", writeCacheSize,arraySize);
+      writeArrayPolicy *writeArray = new writeArrayPolicy("writeArray",
+    		  	  	  	  	  	  	  	  client,
+    		  	  	  	  	  	  	  	  blockSize,
+    		  	  	  	  	  	  	  	  writeCacheSize);
+      writeArray->changemode(runMode);
+      fprintf(stderr,
+    	    "writeArray: "
+    	    "Simple array, size %llu MB process policy WritDisk\n",
+    	    writeCacheSize);
     generators->StatisticsAdd(client);
+    generators->StatisticsAdd(writeArray);
 
     // Create I/O generator based on the input trace type.
     //* xiaodong add write I/O generator
 
     IORequestGeneratorFile *generator;
-    IORequestGeneratorFile *writeGenerator;
     if (useMamboFlag) {
-      generator = new IORequestGeneratorFileMambo(client, argv[i]);
-      writeGenerator =new IORequestGeneratorFileMambo(writeArray, argv[i]);
+      generator = new IORequestGeneratorFileMambo(writeArray, argv[i]);
     }
     else {
-      generator = new IORequestGeneratorFileGeneric(client, argv[i]);
-      writeGenerator = new IORequestGeneratorFileGeneric(writeArray, argv[i]);
+      generator = new IORequestGeneratorFileGeneric(writeArray, argv[i]);
+
     }
 
     generators->IORequestGeneratorAdd(generator);

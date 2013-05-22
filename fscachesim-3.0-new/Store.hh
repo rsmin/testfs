@@ -74,6 +74,7 @@ protected:
 //Added by Xiaodong
   uint64_t writeMisses;
   uint64_t writeHits;
+  uint64_t writeCounts;
 
 private:
   // Copy constructors - declared private and never defined
@@ -138,6 +139,9 @@ public:
     readHits = 0;
     readMisses = 0;
     cooperativeHits = 0;
+    writeHits=0;
+    writeMisses=0;
+    writeCounts=0;
   };
 
   void changemode(Mode_t inMode);

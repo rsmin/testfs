@@ -57,6 +57,7 @@ IORequestGeneratorBatch::IORequestDown()
   if (recordsPerDot > 0 && (requestsIssued % recordsPerDot == 0)) {
     fprintf(stderr, ".");
     fflush(stderr);
+    printf("unkonw error 1");
   }
 
   bool retval;

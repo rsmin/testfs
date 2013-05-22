@@ -8,32 +8,32 @@
 #include "Block.hh"
 #include <math.h>
 
-using namespace DiskActivity;
-using DiskActivity::diskActivityHistory_t;
+
+//using DiskActivity::diskActivityHistory_t;
 
 diskActivityHistory_t diskActivity::checkLastDiskActivity(uint64_t inObjID)
 {
-	diskActivityHistory_t outLastDiskActivity;
+	diskActivityHistory_t outLastDiskAct;
 	list<diskActivityHistory_t>::iterator iter = diskActivityHistory.begin();
 
-	while(iter->objID != inObjID || iter != diskActivityHistory.end())
+	while(iter->objID != inObjID && iter != diskActivityHistory.end())
 	{
 		iter++;
 	}
 	if (iter->objID = inObjID)
 	{
-		outLastDiskActivity.objID = iter->objID ;
-				outLastDiskActivity.status = iter->status;
-				outLastDiskActivity.time=iter->time;
-				outLastDiskActivity.duration=iter->duration;
+		outLastDiskAct.objID = iter->objID ;
+		outLastDiskAct.status = iter->status;
+		outLastDiskAct.time=iter->time;
+		outLastDiskAct.duration=iter->duration;
 	}
 	else{
-		outLastDiskActivity.objID=inObjID;
-		outLastDiskActivity.status = 'A';
-		outLastDiskActivity.time=0;
-		outLastDiskActivity.duration=0;
+		outLastDiskAct.objID=inObjID;
+		outLastDiskAct.status = 'A';
+		outLastDiskAct.time=0;
+		outLastDiskAct.duration=0;
 	}
-	return outLastDiskActivity;
+	return outLastDiskAct;
 };
 
 double diskActivity::spinWaitTimeLenGet(uint64_t inObjID){
@@ -84,10 +84,10 @@ void diskActivity::setSpinWaitTimeLen(diskActivityHistory_t inDiskActivity)
 }
 
 void diskActivity::writeDiskWithSpinDown(diskActivityHistory_t inDiskActivity){
-	diskActivityHistory_t outLastDiskActivity;
-	outLastDiskActivity = checkLastDiskActivity(inDiskActivity.objID);
+	diskActivityHistory_t outLastDiskAct;
+	outLastDiskAct = checkLastDiskActivity(inDiskActivity.objID);
 
-		if(inDiskActivity.time<=(outLastDiskActivity.time+outLastDiskActivity.duration))
+		if(inDiskActivity.time<=(outLastDiskAct.time+outLastDiskAct.duration))
 			    	{
 			    		//set spin wait time before record the activity.
 			 			setSpinWaitTimeLen(inDiskActivity);
@@ -97,8 +97,8 @@ void diskActivity::writeDiskWithSpinDown(diskActivityHistory_t inDiskActivity){
 			    	{
 			    		//without spindown mode setup
 			    		diskActivityHistory_t onlyIdleDiskActivity;
-			    		onlyIdleDiskActivity.objID = outLastDiskActivity.objID;
-			    		onlyIdleDiskActivity.time = outLastDiskActivity.time+outLastDiskActivity.duration;
+			    		onlyIdleDiskActivity.objID = outLastDiskAct.objID;
+			    		onlyIdleDiskActivity.time = outLastDiskAct.time+outLastDiskAct.duration;
 			    		onlyIdleDiskActivity.status='I';
 			    		onlyIdleDiskActivity.duration=inDiskActivity.time-onlyIdleDiskActivity.time;
 			    		setSpinWaitTimeLen(inDiskActivity);
@@ -109,12 +109,12 @@ void diskActivity::writeDiskWithSpinDown(diskActivityHistory_t inDiskActivity){
 }
 
 void diskActivity::writeDiskWithoutSpinDown(diskActivityHistory_t inDiskActivity){
-	diskActivityHistory_t outLastDiskActivity;
-	outLastDiskActivity = checkLastDiskActivity(inDiskActivity.objID);
+	diskActivityHistory_t outLastDiskAct;
+	outLastDiskAct = checkLastDiskActivity(inDiskActivity.objID);
 	diskActivityHistory_t defaultIdleDiskActivity, spindownDiskActivity;
 
-	defaultIdleDiskActivity.objID = outLastDiskActivity.objID;
-	defaultIdleDiskActivity.time = outLastDiskActivity.time+outLastDiskActivity.duration;
+	defaultIdleDiskActivity.objID = outLastDiskAct.objID;
+	defaultIdleDiskActivity.time = outLastDiskAct.time+outLastDiskAct.duration;
 	defaultIdleDiskActivity.status ='I';
 	defaultIdleDiskActivity.duration = inDiskActivity.time-defaultIdleDiskActivity.time;
 

@@ -10,7 +10,6 @@
 
 using namespace std;
 
-namespace DiskActivity{
 typedef struct {
 	uint64_t objID;
     double time;
@@ -104,8 +103,6 @@ diskActivity::putDiskActivityHistory
 {
 	diskActivityHistory.push_front(inDiskActivityHistory);
 };
-
-}
 
 #endif /* _DISKACTIVITY_HH_ */
 
