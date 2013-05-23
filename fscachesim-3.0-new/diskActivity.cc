@@ -143,3 +143,16 @@ void diskActivity::writeDiskWithoutSpinDown(diskActivityHistory_t inDiskActivity
 	}
 }
 
+void diskActivity::diskActivityHistoryPrint()
+{
+	list<diskActivityHistory_t>::iterator iter;
+
+	for (iter= diskActivityHistory.begin(); iter!=diskActivityHistory.end();iter++)
+	{
+		printf("disk objID: %llu, status: %c, time: %d, duration: %d\n",
+				iter->objID,iter->status,iter->time,iter->duration);
+
+	}
+}
+
+

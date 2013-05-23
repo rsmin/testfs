@@ -93,9 +93,9 @@ void setSpinWaitTimeLen(diskActivityHistory_t inDiskActivity);
 
 bool isEmpty() const{return diskActivityHistory.empty();};
 
+void diskActivityHistoryPrint();
+
 };
-
-
 
 inline void
 diskActivity::putDiskActivityHistory

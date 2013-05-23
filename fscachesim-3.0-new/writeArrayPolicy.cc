@@ -107,13 +107,18 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 	    	}
 	    	else if(cache.isCached(inBlock)){
 	    		writeHits++;
+
+	    		printf("hit: objectID: %llu, block ID: %llu, request time: %llu\n",
+	    				inBlock.objID,inBlock.blockID,inIOReq.timeIssuedGet());
 	    	}
 	    	else if (cache.isFull()) {
 	    		diskAct.writeDiskWithSpinDown(inDiskActivity);
 	    		diskActWithoutSpindown.writeDiskWithoutSpinDown(inDiskActivity);
 	    	 }
 	    	else{
-	    		writeHits++;
+	    		writeMisses++;
+	    		printf("miss: objectID: %llu, block ID: %llu, request time: %llu\n",
+	    				inBlock.objID,inBlock.blockID,inIOReq.timeIssuedGet());
 	    		cache.blockPutAtHead(inBlock);
 	    	}
 
@@ -121,4 +126,7 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 	    default:
 	    	break;
 	}
+
+	//test code:
+	diskAct.diskActivityHistoryPrint();
 };
