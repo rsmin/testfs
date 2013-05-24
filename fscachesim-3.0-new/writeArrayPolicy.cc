@@ -30,10 +30,15 @@ void writeArrayPolicy::beforeShow()
  diskAct.diskActivityHistoryPrint();
  diskActWithoutSpindown.diskActivityHistoryPrint();
 
+ double energySaving = (diskActWithoutSpindown.overalEnergyConsumptionGet() -
+		 	 	 	 	diskAct.overalEnergyConsumptionGet())/
+		 	 	 	 	diskActWithoutSpindown.overalEnergyConsumptionGet();
  printf("writeCount is %llu \n", writeCounts);
 
- printf("overall energy no spindown is %lf \n", diskAct.overalEnergyConsumptionGet());
- printf("overall energy with spindown is %lf \n", diskActWithoutSpindown.overalEnergyConsumptionGet());
+ printf("overall energy with spindown is %lf \n", diskAct.overalEnergyConsumptionGet());
+ printf("overall energy without spindown is %lf \n", diskActWithoutSpindown.overalEnergyConsumptionGet());
+
+ printf("overall energy saving is %lf \n", energySaving);
 }
 
 void
