@@ -125,9 +125,10 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 //	    		printf("hit: objectID: %llu, block ID: %llu, request time: %lf\n",
 //	    				inBlock.objID,inBlock.blockID,inIOReq.timeIssuedGet());
 	    		else if (cache.isFull()) {
-	    		diskAct.writeDiskWithSpinDown(inDiskActivity);
-	    		diskActWithoutSpindown.writeDiskWithoutSpinDown(inDiskActivity);
-	    		cacheCleanPolicy();
+	    			writeMisses++;
+	    			diskAct.writeDiskWithSpinDown(inDiskActivity);
+	    			diskActWithoutSpindown.writeDiskWithoutSpinDown(inDiskActivity);
+	    			cacheCleanPolicy();
 	    		}
 	    		else{
 	    			writeMisses++;

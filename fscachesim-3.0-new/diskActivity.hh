@@ -1,3 +1,13 @@
+/*
+ * Disk parameter is set up based on the thesis of
+ * <<Energy-Aware Prefetching for Parallel Disk Systems>> 2008
+ * where
+ * IBM36Z15 disk 55MB/s
+ *	P-act=13.5	P-idle=10.2	P-standby=2.5	P-spindown=8.67 P-spinup=12.39
+ *	latency-spinup= 10.9 latency-spindown= 1.5
+ *	access speed = 55000000
+ */
+
 #ifndef _DISKACTIVITY_HH_
 #define _DISKACTIVITY_HH_
 
@@ -59,15 +69,15 @@ private:
 
 public:
 	diskActivity():
-		access_speed(10000000), /*Byte per s*/
+		access_speed(55000000), /*Byte per s*/
 	//	const uint64_t write_speed;
-		spindown_latency(0.0004),
-		spinup_latency(0.0002),
-		idle_power(0.1),
-		active_power(5),
-		spin_power(0.002),
-		spindown_power(1),
-		spinup_power(1),
+		spindown_latency(1.5),
+		spinup_latency(10.9),
+		idle_power(10.2),
+		active_power(13.5),
+		spin_power(2.5),
+		spindown_power(8.67),
+		spinup_power(12.39),
 		spinWaitTimeDelta(0.1),
 		initSpintWaitTimeLen(0.1),
 		spinTimeLen_min(
