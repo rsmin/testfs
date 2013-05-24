@@ -166,4 +166,39 @@ void diskActivity::diskActivityHistoryPrint()
 	}
 }
 
+void diskActivity::energyComsuptionDiskCal()
+{
+	list<diskActivityHistory_t>::iterator iter;
+	double energyCom;
+	for (iter= diskActivityHistory.end(); iter!=diskActivityHistory.begin();iter--){
+		switch (iter->status) {
+			    case 'A':
+			    	energyCom = active_power * iter->duration;
+			    	break;
+			    case 'I':
+			    	energyCom = idle_power * iter->duration;
+			    	break;
+			    case 'S':
+			    	if(iter->duration < spinup_latency+spindown_latency)
+			    		energyCom = spindown_power * iter->duration;
+			    	else
+			    		energyCom = spinup_power * spinup_latency +
+			    					spindown_power * spindown_latency +
+			    					+ spin_power * (iter->duration-spinup_latency-spindown_latency);
+			    	break;
+		}
+		energyComsuptionDisk[iter->objID] = energyComsuptionDisk[iter->objID]+energyCom;
+	}
+}
+
+void diskActivity::overalEnergyConsumptionCal()
+{
+	map<uint64_t, double>::iterator iter;
+	for (iter= energyComsuptionDisk.begin(); iter!=energyComsuptionDisk.end();iter++){
+		overallenergyConsumption = overallenergyConsumption+iter->second;
+	}
+}
+
+
+
 

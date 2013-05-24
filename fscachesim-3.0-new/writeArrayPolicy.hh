@@ -26,6 +26,8 @@ private:
   diskActivity diskActWithoutSpindown;
   diskActivityHistory_t inDiskActivity;
   diskActivityHistory_t outLastDiskActivity;
+  map<uint64_t, double> energyComsuptionDisk;
+  double overallenergyConsumption;
   // Copy constructors - declared private and never defined
 
 private:
@@ -84,8 +86,10 @@ void cacheCleanPolicy();
 
   // Statistics management
 
+ void energyCal();
  virtual void statisticsShow() const;
  virtual void beforeShow();
+ void diskOperationEnd();
 };
 
 #endif /* _WRITEARRAYPOLICY_HH_ */

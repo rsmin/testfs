@@ -519,6 +519,8 @@ generators->StatisticsAdd(writeArray);
 
   //clean up the write cache
   writeArray->cacheCleanPolicy();
+  writeArray->diskOperationEnd();
+  writeArray->energyCal();
 
   generators->beforeShow();
   generators->statisticsShow();

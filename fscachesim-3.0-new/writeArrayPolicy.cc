@@ -31,6 +31,9 @@ void writeArrayPolicy::beforeShow()
  diskActWithoutSpindown.diskActivityHistoryPrint();
 
  printf("writeCount is %llu \n", writeCounts);
+
+ printf("overall energy no spindown is %lf \n", diskAct.overalEnergyConsumptionGet());
+ printf("overall energy with spindown is %lf \n", diskActWithoutSpindown.overalEnergyConsumptionGet());
 }
 
 void
@@ -138,3 +141,60 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 	//test code:
 
 };
+
+//Synchronize disks' activities after all the requests
+void writeArrayPolicy::diskOperationEnd()
+{
+	map<uint64_t, bool> finishedDiskSD;
+	map<uint64_t, bool> finishedDiskNoSD;
+	map<uint64_t,bool>::iterator diskIt;
+	list<diskActivityHistory_t>::iterator iter;
+
+	list<diskActivityHistory_t> lastDiskAct;
+	lastDiskAct = diskAct.diskActivityHistoryGet();
+
+	diskActivityHistory_t outLastActivity;
+	outLastActivity = lastDiskAct.front();
+	outLastActivity.status = 'A';
+	outLastActivity.duration = 0;
+	finishedDiskSD[outLastActivity.objID] = true;
+
+
+	for (iter = lastDiskAct.begin();iter!=lastDiskAct.end();iter++){
+		diskIt = finishedDiskSD.find(iter->objID);
+		//if the disk is not found:
+		if(diskIt == finishedDiskSD.end()) {
+			finishedDiskSD[iter->objID] = true;
+			outLastActivity.objID = iter->objID;
+			diskAct.writeDiskWithSpinDown(outLastActivity);
+			}
+
+	}
+
+	lastDiskAct = diskActWithoutSpindown.diskActivityHistoryGet();
+	outLastActivity = lastDiskAct.front();
+	outLastActivity.status = 'A';
+	outLastActivity.duration = 0;
+	finishedDiskNoSD[outLastActivity.objID] = true;
+
+	for (iter = lastDiskAct.begin();iter!=lastDiskAct.begin();iter++){
+			diskIt= finishedDiskNoSD.find(iter->objID);
+			//if the disk is not found:
+			if(diskIt == finishedDiskNoSD.end()) {
+				finishedDiskNoSD[iter->objID] = true;
+				outLastActivity.objID = iter->objID;
+				diskActWithoutSpindown.writeDiskWithoutSpinDown(outLastActivity);
+				}
+		}
+
+
+}
+
+void writeArrayPolicy::energyCal()
+{
+	diskAct.energyComsuptionDiskCal();
+	diskActWithoutSpindown.energyComsuptionDiskCal();
+
+	diskAct.overalEnergyConsumptionCal();
+	diskActWithoutSpindown.overalEnergyConsumptionCal();
+}

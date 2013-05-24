@@ -21,6 +21,7 @@ typedef struct {
      */
   } diskActivityHistory_t;
 
+
 class diskActivity{
 
 private:
@@ -47,6 +48,9 @@ private:
 	// Disk operation history
 	list<diskActivityHistory_t> diskActivityHistory;
 
+	  map<uint64_t, double> energyComsuptionDisk;
+	  double overallenergyConsumption;
+
 private:
   // Copy constructors - declared private and never defined
 
@@ -72,7 +76,8 @@ public:
 				/(idle_power-spin_power)),
 		spinWaitTimeLen(),
 		diskActivityHistory(),
-		spinWaitIndex(){;};
+		spinWaitIndex(),
+		overallenergyConsumption(0){;};
 
 	~diskActivity(){;};
 
@@ -95,6 +100,16 @@ bool isEmpty() const{return diskActivityHistory.empty();};
 
 void diskActivityHistoryPrint();
 
+void diskOperationEnd();
+
+list<diskActivityHistory_t> diskActivityHistoryGet(){return diskActivityHistory;};
+
+void energyComsuptionDiskCal();
+
+void overalEnergyConsumptionCal();
+
+map<uint64_t, double> energyComsuptionDiskGet(){return energyComsuptionDisk;};
+double overalEnergyConsumptionGet(){return overallenergyConsumption;};
 };
 
 inline void
@@ -103,6 +118,8 @@ diskActivity::putDiskActivityHistory
 {
 	diskActivityHistory.push_front(inDiskActivityHistory);
 };
+
+
 
 #endif /* _DISKACTIVITY_HH_ */
 
