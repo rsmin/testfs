@@ -27,6 +27,10 @@ void writeArrayPolicy::beforeShow()
 {
 // cache.postShow();
  StoreCache::beforeShow();
+ diskAct.diskActivityHistoryPrint();
+ diskActWithoutSpindown.diskActivityHistoryPrint();
+
+ printf("writeCount is %llu \n", writeCounts);
 }
 
 void
@@ -34,9 +38,9 @@ writeArrayPolicy::statisticsShow() const
 {
   printf("{writeArrayPolicy.%s\n", nameGet());
 
+
   if (mode != Analyze)
      printf("\t{size {total=%llu} }\n", cache.sizeGet() * blockSizeGet());
-
   StoreCache::statisticsShow();
 
  if (mode != Analyze)
@@ -53,7 +57,7 @@ void writeArrayPolicy::cacheCleanPolicy(){
 		cache.blockGetAtHead(cacheBlock);
 		cacheDiskActivity.objID=cacheBlock.objID;
 		cacheDiskActivity.status = 'A';
-		cacheDiskActivity.duration=cacheBlock.blockID*blockSize/diskAct.access_speedGet();
+		cacheDiskActivity.duration=blockSize/diskAct.access_speedGet();
 		outLastDiskActivity = diskAct.checkLastDiskActivity(cacheBlock.blockID);
 		if (outLastDiskActivity.time+outLastDiskActivity.duration < inDiskActivity.time )
 		{
@@ -78,12 +82,12 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 {
 
 
-	double const inIOReqDuration = inIOReq.lenGet()/diskAct.access_speedGet();
+	double const inBlockDuration = blockSize/diskAct.access_speedGet();
 
 	inDiskActivity.objID = inIOReq.objIDGet();
 	inDiskActivity.time = inIOReq.timeIssuedGet();
 	inDiskActivity.status = 'A';
-	inDiskActivity.duration = inIOReqDuration;
+	inDiskActivity.duration = inBlockDuration;
 	//1. check disk last status
 	outLastDiskActivity = diskAct.checkLastDiskActivity(inDiskActivity.objID);
 
@@ -105,21 +109,25 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 	    		diskActWithoutSpindown.writeDiskWithoutSpinDown(inDiskActivity);
 	    		cacheCleanPolicy();
 	    	}
-	    	else if(cache.isCached(inBlock)){
-	    		writeHits++;
+	    	else {
 
-	    		printf("hit: objectID: %llu, block ID: %llu, request time: %llu\n",
-	    				inBlock.objID,inBlock.blockID,inIOReq.timeIssuedGet());
-	    	}
-	    	else if (cache.isFull()) {
+	    		if(cache.isCached(inBlock))
+	    			writeHits++;
+
+//	    		printf("hit: objectID: %llu, block ID: %llu, request time: %lf\n",
+//	    				inBlock.objID,inBlock.blockID,inIOReq.timeIssuedGet());
+	    		else if (cache.isFull()) {
 	    		diskAct.writeDiskWithSpinDown(inDiskActivity);
 	    		diskActWithoutSpindown.writeDiskWithoutSpinDown(inDiskActivity);
-	    	 }
-	    	else{
-	    		writeMisses++;
-	    		printf("miss: objectID: %llu, block ID: %llu, request time: %llu\n",
-	    				inBlock.objID,inBlock.blockID,inIOReq.timeIssuedGet());
-	    		cache.blockPutAtHead(inBlock);
+	    		cacheCleanPolicy();
+	    		}
+	    		else{
+	    			writeMisses++;
+	    			cache.blockPutAtHead(inBlock);
+	    		}
+//	    		printf("miss: objectID: %llu, block ID: %llu, request time: %lf\n",
+//	    				inBlock.objID,inBlock.blockID,inIOReq.timeIssuedGet());
+
 	    	}
 
 	    	break;
@@ -128,5 +136,5 @@ writeArrayPolicy::BlockCache(const IORequest& inIOReq,
 	}
 
 	//test code:
-	diskAct.diskActivityHistoryPrint();
+
 };

@@ -72,9 +72,9 @@ public:
      StoreCache(inName,inBlockSize, inSize),
      cache(inSize),
      diskActWithoutSpindown(),
-     diskAct(),
-     inDiskActivity(),
-     outLastDiskActivity(){ ; };
+     diskAct(){ ; };
+ //    inDiskActivity(),
+  //   outLastDiskActivity()
 
 void cacheCleanPolicy();
   /**

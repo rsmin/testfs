@@ -194,7 +194,16 @@ main(int argc,
   uint64_t arraySizeMB = atol(argv[optind + 2]);
   uint64_t arraySize = arraySizeMB * (globalMBToB / blockSize);
 
+//build a write array
+	uint64_t writeCacheSize = arraySize*writeCachetoArrayCacheRatio; /*define writeCacheSize*/
+		arraySize = arraySize-writeCacheSize;
+	printf("writeCacheSize: [%llu]\n arraySize: [%llu]\n", writeCacheSize,arraySize);
+		writeArrayPolicy *writeArray = new writeArrayPolicy("writeArray",
+        		  	  	  	  	  	  	  	  blockSize,
+        		  	  	  	  	  	  	  	  writeCacheSize);
 
+writeArray->changemode(runMode);
+generators->StatisticsAdd(writeArray);
 
 
   // Create an array cache to receive all I/O requests that miss in the
@@ -444,34 +453,31 @@ main(int argc,
     /* Xiaodong Create write cache to process all write requests
        *
        */
-      uint64_t writeCacheSize = arraySize*writeCachetoArrayCacheRatio; /*define writeCacheSize*/
-      arraySize = arraySize-writeCacheSize;
-printf("writeCacheSize: [%llu]\n arraySize: [%llu]\n", writeCacheSize,arraySize);
-      writeArrayPolicy *writeArray = new writeArrayPolicy("writeArray",
-    		  	  	  	  	  	  	  	  client,
-    		  	  	  	  	  	  	  	  blockSize,
-    		  	  	  	  	  	  	  	  writeCacheSize);
-      writeArray->changemode(runMode);
+
       fprintf(stderr,
     	    "writeArray: "
     	    "Simple array, size %llu MB process policy WritDisk\n",
     	    writeCacheSize);
     generators->StatisticsAdd(client);
-    generators->StatisticsAdd(writeArray);
+
 
     // Create I/O generator based on the input trace type.
     //* xiaodong add write I/O generator
 
     IORequestGeneratorFile *generator;
+    IORequestGeneratorFile *wgenerator;
     if (useMamboFlag) {
-      generator = new IORequestGeneratorFileMambo(writeArray, argv[i]);
+      generator = new IORequestGeneratorFileMambo(client, argv[i]);
+      wgenerator = new IORequestGeneratorFileMambo(writeArray, argv[i]);
     }
     else {
-      generator = new IORequestGeneratorFileGeneric(writeArray, argv[i]);
+      generator = new IORequestGeneratorFileGeneric(client, argv[i]);
+      wgenerator = new IORequestGeneratorFileGeneric(writeArray, argv[i]);
 
     }
 
     generators->IORequestGeneratorAdd(generator);
+    generators->IORequestGeneratorAdd(wgenerator);
 
   }
 
@@ -510,9 +516,13 @@ printf("writeCacheSize: [%llu]\n arraySize: [%llu]\n", writeCacheSize,arraySize)
   while (generators->IORequestDown());
 
   // Dump out the statistics.
-  generators->beforeShow();
 
+  //clean up the write cache
+  writeArray->cacheCleanPolicy();
+
+  generators->beforeShow();
   generators->statisticsShow();
+
 
   // Clean up after ourselves.
 
