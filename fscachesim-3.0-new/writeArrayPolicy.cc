@@ -27,8 +27,8 @@ void writeArrayPolicy::beforeShow()
 {
 // cache.postShow();
  StoreCache::beforeShow();
- diskAct.diskActivityHistoryPrint();
- diskActWithoutSpindown.diskActivityHistoryPrint();
+ //diskAct.diskActivityHistoryPrint();
+ //diskActWithoutSpindown.diskActivityHistoryPrint();
 
  double energySaving = (diskActWithoutSpindown.overalEnergyConsumptionGet() -
 		 	 	 	 	diskAct.overalEnergyConsumptionGet())/

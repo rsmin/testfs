@@ -70,11 +70,13 @@ IORequestGeneratorFileGeneric::IORequestQueue()
 				  off,
 				  len);
 
- /*     printf ("%lf %llu %llu %llu\n",
+/*
+ * printf ("%lf %llu %llu %llu\n",
 		timeIssued,
 		objID,
 		off,
-		len);*/
+		len);
+		*/
 
 
     }

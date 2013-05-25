@@ -195,8 +195,8 @@ main(int argc,
   uint64_t arraySize = arraySizeMB * (globalMBToB / blockSize);
 
 //build a write array
-	uint64_t writeCacheSize = arraySize*writeCachetoArrayCacheRatio; /*define writeCacheSize*/
-		arraySize = arraySize-writeCacheSize;
+	uint64_t writeCacheSize = clientSize*writeCachetoArrayCacheRatio; /*define writeCacheSize*/
+	clientSize = clientSize-writeCacheSize;
 	printf("writeCacheSize: [%llu]\n arraySize: [%llu]\n", writeCacheSize,arraySize);
 		writeArrayPolicy *writeArray = new writeArrayPolicy("writeArray",
         		  	  	  	  	  	  	  	  blockSize,
@@ -512,14 +512,19 @@ generators->StatisticsAdd(writeArray);
   }
 
   // Run until we have no more I/Os to process.
+  printf("Simulation is start...");
 
   while (generators->IORequestDown());
+
 
   // Dump out the statistics.
 
   //clean up the write cache
+  printf("Clean the operation...");
   writeArray->cacheCleanPolicy();
   writeArray->diskOperationEnd();
+
+  printf("Energy Calculation...");
   writeArray->energyCal();
 
   generators->beforeShow();

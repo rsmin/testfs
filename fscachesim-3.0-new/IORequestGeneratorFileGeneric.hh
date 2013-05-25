@@ -39,7 +39,7 @@ public:
    */
   IORequestGeneratorFileGeneric(Store *inStore,
 				const char *inFilename) :
-    IORequestGeneratorFile(inStore, inFilename) {
+    IORequestGeneratorFile(inStore, inFilename){
     IORequestQueue();
   };
 
